@@ -1,7 +1,7 @@
 # Reference:
 # - https://docs.docker.com/compose/compose-file
 # - https://eclipsesource.com/blogs/2018/01/11/authenticating-reverse-proxy-with-keycloak/
-
+version: "3.8"
 services:
   # Exposed server that's handling incoming web requests
   ohif_viewer:
@@ -49,17 +49,21 @@ services:
       # Relative to context
       dockerfile: ./monai-label/Dockerfile
     image: monai
+    runtime: nvidia
     container_name: monai_sam2
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=all  # This exposes all GPUs to the container
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    #  - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # Required driver capabilities for GPU use
     deploy:
       resources:
         reservations:
           devices:
-            - capabilities: [gpu]  # Request GPUs for this service
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all  # This exposes all GPUs to the container
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # Required driver capabilities for GPU use
-    runtime: nvidia  # Use NVIDIA runtime
-    shm_size: '10gb'
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]  # Request GPUs for this service
+    shm_size: '10gb' #runtime: nvidia  # Use NVIDIA runtime
     ports:
       - '8002:8002' 
     depends_on:
