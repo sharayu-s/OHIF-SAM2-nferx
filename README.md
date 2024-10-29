@@ -9,7 +9,8 @@
 
 ## Demo Video
 
-[![OHIF-SAM2 Demo](https://raw.githubusercontent.com/CCI-Bonn/OHIF-SAM2/main/docs/videos/demo_v1_thumb.png)](https://raw.githubusercontent.com/CCI-Bonn/OHIF-SAM2/main/docs/videos/demo_v1.mov)
+[![OHIF-SAM2 Demo](https://img.youtube.com/vi/BS2wCKYh_pk/0.jpg)](https://www.youtube.com/watch?v=BS2wCKYh_pk)
 
 - Prompts (Positive, negative points and Bounding boxes) are supported.
+
 - Two SAM2 buttons are available: SAM2_one (faster) for the slices where prompts are given, SAM2 for all slices via propagation.
