@@ -353,7 +353,7 @@ class BasicInferTask(InferTask):
             
             ann_frame_list = np.unique(np.array(list(map(lambda x: x[2], data['pos_points'])), dtype=np.int16))
                         
-            if 'boxes' in data:
+            if len(data['boxes'])!=0:
                 ann_frame_list_box = np.unique(np.array(list(map(lambda x: x[2], [x for xs in data['boxes'] for x in xs])), dtype=np.int16))
                 ann_frame_list = np.unique(np.concatenate((ann_frame_list, ann_frame_list_box)))
 
@@ -369,7 +369,8 @@ class BasicInferTask(InferTask):
                 value = ann_frame_list[i]
                 pos_points = np.array([i[0:2] for i in data['pos_points'] if i[2]==value], dtype=np.int16)
                 neg_points = np.array([i[0:2] for i in data['neg_points'] if i[2]==value], dtype=np.int16)
-                
+                pre_boxes = np.array([i for i in data['boxes'] if i[0][2]==value], dtype=np.int16)
+
                 if len(neg_points) >0:
                     
                     #breakpoint()
@@ -380,9 +381,8 @@ class BasicInferTask(InferTask):
                     points = pos_points
                     labels = np.array([1]*len(points), np.int32)
 
-                if 'boxes' in data:
-                    temp = np.array([i for i in data['boxes'] if i[0][2]==value], dtype=np.int16)
-                    boxes = temp[:,:,:-1].reshape(temp.shape[0],-1)
+                if len(pre_boxes)!=0:
+                    boxes = pre_boxes[:,:,:-1].reshape(pre_boxes.shape[0],-1)
 
                     _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
                         inference_state=inference_state,
@@ -428,34 +428,6 @@ class BasicInferTask(InferTask):
             sitk.WriteImage(pred_itk, '/code/sam.nii.gz')
 
             return '/code/sam.nii.gz', result_json
-        # Inference with totalsegmentator API, labels are multiple nii.gz files with target label name
-        totalsegmentator(data['image'], '/home/cho/MONAILabel/brain',task="brain_structures")
-
-        
-        labels = sorted(glob('{}/*'.format('/home/cho/MONAILabel/brain')))
-        img = sitk.ReadImage(labels[0])
-        img_npy = sitk.GetArrayFromImage(img)
-        seg_new = np.zeros_like(img_npy)
-        label_info = []
-        u = 1
-        for label in labels:
-            img = sitk.ReadImage(label)
-            label_name = label.split('/')[-1].split('.nii.gz')[0]
-            img_npy = sitk.GetArrayFromImage(img)
-            
-            if np.sum(img_npy) != 0:
-                #if seg_new.shape != img_npy.shape:
-                #    breakpoint()
-                seg_new[img_npy == 1] = u
-                u=u+1
-                label_info.append(label_name)
-            
-        img_corr = sitk.GetImageFromArray(seg_new)
-        img_corr.CopyInformation(img)
-        sitk.WriteImage(img_corr, '/home/cho/MONAILabel/sum.nii.gz')
-        np.save('/home/cho/MONAILabel/labelname', np.array(label_info))
-
-        return '/home/cho/MONAILabel/sum.nii.gz', result_json
 
     def run_pre_transforms(self, data: Dict[str, Any], transforms):
         pre_cache: List[Any] = []

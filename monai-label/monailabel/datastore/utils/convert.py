@@ -42,7 +42,7 @@ def dicom_to_nifti(series_dir, is_seg=False):
         if os.path.isdir(series_dir) and len(os.listdir(series_dir)) > 1:
             reader = SimpleITK.ImageSeriesReader()
             dicom_names = reader.GetGDCMSeriesFileNames(series_dir)
-            dicom_names = tuple(sorted(dicom_names, reverse=True))
+            #dicom_names = tuple(sorted(dicom_names, reverse=True))
             #breakpoint()
             reader.SetFileNames(dicom_names)
             image = reader.Execute()
