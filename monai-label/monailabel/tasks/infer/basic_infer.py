@@ -36,8 +36,6 @@ from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
 from monailabel.utils.others.generic import device_list, device_map, name_to_device
 
-from totalsegmentator.python_api import totalsegmentator
-
 from sam2.build_sam import build_sam2_video_predictor
 
 sam2_checkpoint = "/code/checkpoints/sam2_hiera_large.pt"
