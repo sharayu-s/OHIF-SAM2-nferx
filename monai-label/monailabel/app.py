@@ -56,6 +56,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.MONAI_LABEL_PROJECT_NAME,
+    root_path="/monai",
     openapi_url="/openapi.json",
     docs_url=None,
     redoc_url="/docs",
@@ -99,7 +100,7 @@ app.include_router(session.router, prefix=settings.MONAI_LABEL_API_STR)
 
 @app.get("/", include_in_schema=False)
 async def custom_swagger_ui_html():
-    html = get_swagger_ui_html(openapi_url=app.openapi_url, title=app.title + " - APIs")
+    html = get_swagger_ui_html(openapi_url=app.root_path+app.openapi_url, title=app.title + " - APIs")
 
     body = html.body.decode("utf-8")
     body = body.replace("showExtensions: true,", "showExtensions: true, defaultModelsExpandDepth: -1,")

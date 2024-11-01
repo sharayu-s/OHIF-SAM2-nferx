@@ -15,3 +15,7 @@
 - Prompts (Positive, Negative Points and Bounding Boxes) are supported.
 
 - Two SAM2 buttons are available: SAM2_one (faster) for the slices where prompts are given, SAM2 for all slices via propagation.
+
+## Next steps
+
+-

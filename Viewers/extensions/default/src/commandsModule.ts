@@ -459,7 +459,7 @@ const commandsModule = ({
       });
     },
     async sam2_one() {
-      const response = await MonaiLabelClient.api_get('http://localhost:8002/info');
+      const response = await MonaiLabelClient.api_get('/monai/info/');
       if (response.status === 200) {
         uiNotificationService.show({
           title: 'MONAI Label',
@@ -509,7 +509,7 @@ const commandsModule = ({
 
       let box_prompts = bd_boxes.map(e => { return [e.at(0).pointIJK, e.at(-1).pointIJK] })
 
-      let url = `http://localhost:8002/infer/segmentation?image=${currentDisplaySets.SeriesInstanceUID}&output=dicom_seg`;
+      let url = `/monai/infer/segmentation?image=${currentDisplaySets.SeriesInstanceUID}&output=dicom_seg`;
       let params = {
         largest_cc: false,
         device: response.data.trainers.segmentation.config.device,
@@ -569,7 +569,7 @@ const commandsModule = ({
         .finally(function () { });
     },
     async sam2() {
-      const response = await MonaiLabelClient.api_get('http://localhost:8002/info');
+      const response = await MonaiLabelClient.api_get('/monai/info/');
       if (response.status === 200) {
         uiNotificationService.show({
           title: 'MONAI Label',
@@ -620,7 +620,7 @@ const commandsModule = ({
 
       let box_prompts = bd_boxes.map(e => { return [e.at(0).pointIJK, e.at(-1).pointIJK] })
 
-      let url = `http://localhost:8002/infer/segmentation?image=${currentDisplaySets.SeriesInstanceUID}&output=dicom_seg`;
+      let url = `/monai/infer/segmentation?image=${currentDisplaySets.SeriesInstanceUID}&output=dicom_seg`;
       let params = {
         largest_cc: false,
         device: response.data.trainers.segmentation.config.device,
