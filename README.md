@@ -30,7 +30,7 @@
 ## (potential) FAQ
 
 - Q: Load library (libnvidia-ml.so) failed from NVIDIA Container Toolkit
-- A: Run `sudo apt-get install --reinstall docker-ce `, [Ref](https://github.com/NVIDIA/nvidia-container-toolkit/issues/305)
+- A: Run `sudo apt-get install --reinstall docker-ce ` [Reference](https://github.com/NVIDIA/nvidia-container-toolkit/issues/305)
 
 - Q: `Failed to initialize NVML: Unknown Error` Or `No CUDA available``
-- A: Edit `no-cgroups = false`in `/etc/nvidia-container-runtime/config.toml`
+- A: Edit `no-cgroups = false`in `/etc/nvidia-container-runtime/config.toml` [Reference](https://forums.developer.nvidia.com/t/nvida-container-toolkit-failed-to-initialize-nvml-unknown-error/286219/2)
