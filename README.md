@@ -8,7 +8,8 @@
 
 ## Getting Started
 
-- Run ['bash start.sh']
+- Run `bash start.sh`
+- Go to http://localhost:1026
 - Upload all DICOM files in sample-data
 
 ## Demo Video
