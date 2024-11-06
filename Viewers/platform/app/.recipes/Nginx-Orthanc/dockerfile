@@ -67,8 +67,6 @@ FROM nginx:alpine
 # # Create directories for logs and html content if they don't already exist
 RUN mkdir -p /var/log/nginx /var/www/html
 
-RUN rm -rf /docker-entrypoint.d/*
-
 # # Copy build output to serve static files
 COPY --from=builder /usr/src/app/platform/app/dist /var/www/html
 
