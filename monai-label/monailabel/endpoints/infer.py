@@ -106,9 +106,12 @@ def send_response(datastore, result, output, background_tasks):
     if output == "dicom_seg":
         res_dicom_seg = result.get("dicom_seg")
         if res_dicom_seg is None:
+            logger.info("No dicom_seg?")
             raise HTTPException(status_code=500, detail="Error processing inference")
         else:
-            return FileResponse(res_dicom_seg, media_type="application/dicom", filename=os.path.basename(res_dicom_seg))
+            logger.info("File response!")
+            return Response(content=res_dicom_seg, media_type="application/json")
+            #return FileResponse(res_dicom_seg, media_type="application/dicom", filename=os.path.basename(res_dicom_seg))
 
     res_fields = dict()
     res_fields["params"] = (None, json.dumps(res_json), "application/json")
@@ -207,8 +210,8 @@ def run_inference(
                 if res_del.status_code != 200:
                     breakpoint()
         dicom_seg_file = nifti_to_dicom_seg(image_path, res_img, p.get("label_info"), use_itk=True)
-        dicom_web_upload_dcm(dicom_seg_file, instance.datastore()._client)
-        result["dicom_seg"] = dicom_seg_file
+        series_id = dicom_web_upload_dcm(dicom_seg_file, instance.datastore()._client)
+        result["dicom_seg"] = series_id
 
     return send_response(instance.datastore(), result, output, background_tasks)
 
