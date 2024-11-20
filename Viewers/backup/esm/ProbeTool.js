@@ -272,8 +272,8 @@ class ProbeTool extends AnnotationTool {
             const index = transformWorldToIndex(imageData, worldPos);
             index[0] = Math.round(index[0]);
             index[1] = Math.round(index[1]);
-            //index[2] = Math.round(index[2]);
-            index[2] = services.measurementService.getMeasurements().filter((u) => {return u.uid === annotation.annotationUID})[0].displayText[0].split("I: ")[1].slice(0,-1)
+            index[2] = Math.round(index[2]);
+            //index[2] = services.measurementService.getMeasurements().filter((u) => {return u.uid === annotation.annotationUID})[0].displayText[0].split("I: ")[1].slice(0,-1)
 
             const samplesPerPixel = scalarData.length / dimensions[2] / dimensions[1] / dimensions[0];
             if (csUtils.indexWithinDimensions(index, dimensions)) {
