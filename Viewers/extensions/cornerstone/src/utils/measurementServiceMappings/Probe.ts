@@ -27,8 +27,13 @@ const Probe = {
       return null;
     }
 
-    const { toolName, referencedImageId, FrameOfReferenceUID } = metadata;
+    let { toolName, referencedImageId, FrameOfReferenceUID } = metadata;
     const validToolType = SUPPORTED_TOOLS.includes(toolName);
+
+    if (referencedImageId === undefined){
+      let currentImageIdIndex = CornerstoneViewportService.getCornerstoneViewport(viewportId).getCurrentImageIdIndex()
+      referencedImageId = CornerstoneViewportService.getCornerstoneViewport(viewportId).getImageIds()[currentImageIdIndex]
+    } 
 
     if (!validToolType) {
       throw new Error('Tool not supported');
