@@ -29,7 +29,8 @@ export default function sortImageIdsAndGetSpacing(imageIds, scanAxisNormal) {
             };
         });
         distanceImagePairs.sort((a, b) => b.distance - a.distance);
-        sortedImageIds = distanceImagePairs.map((a) => a.imageId);
+        //sortedImageIds = distanceImagePairs.map((a) => a.imageId);
+        sortedImageIds = imageIds.reverse()
         const numImages = distanceImagePairs.length;
         zSpacing =
             Math.abs(distanceImagePairs[numImages - 1].distance -
