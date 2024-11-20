@@ -3213,9 +3213,13 @@ function getImageIdOfSourceImagebyGeometry$1(ReferencedSeriesInstanceUID, FrameO
     if (sourceImageMetadata === undefined || sourceImageMetadata.ImagePositionPatient === undefined || sourceImageMetadata.SeriesInstanceUID !== ReferencedSeriesInstanceUID) {
       continue;
     }
-    if (compareArrays(PerFrameFunctionalGroup.PlanePositionSequence[0].ImagePositionPatient, sourceImageMetadata.ImagePositionPatient, tolerance)) {
+    //if (compareArrays(PerFrameFunctionalGroup.PlanePositionSequence[0].ImagePositionPatient, sourceImageMetadata.ImagePositionPatient, 10)) { //tolerance
+    //  return imageIds[imageIdsIndexc];
+    //}
+    if (PerFrameFunctionalGroup.FrameContentSequence[0]
+      .DimensionIndexValues[1]=== sourceImageMetadata.InstanceNumber) { //tolerance
       return imageIds[imageIdsIndexc];
-    }
+  }
   }
 }
 
@@ -3843,10 +3847,14 @@ function getImageIdOfSourceImagebyGeometry(ReferencedSeriesInstanceUID, FrameOfR
                 ReferencedSeriesInstanceUID) {
             continue;
         }
-        if (compareArrays(PerFrameFunctionalGroup.PlanePositionSequence[0]
-            .ImagePositionPatient, sourceImageMetadata.ImagePositionPatient, tolerance)) {
-            return imageIds[imageIdsIndex];
-        }
+        //if (compareArrays(PerFrameFunctionalGroup.PlanePositionSequence[0]
+        //    .ImagePositionPatient, sourceImageMetadata.ImagePositionPatient, 10)) { //tolerance
+        //    return imageIds[imageIdsIndex];
+        //}
+        if (PerFrameFunctionalGroup.FrameContentSequence[0]
+              .DimensionIndexValues[1]=== sourceImageMetadata.InstanceNumber) { //tolerance
+              return imageIds[imageIdsIndex];
+          }
     }
 }
 function getImageIdOfReferencedFrame(sopInstanceUid, frameNumber, sopUIDImageIdIndexMap) {
