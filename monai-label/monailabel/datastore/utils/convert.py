@@ -22,15 +22,13 @@ import pydicom_seg
 from pydicom import config
 
 import SimpleITK
-#import dicom2nifti
+
 from monai.transforms import LoadImage
 from pydicom.filereader import dcmread
 
 from monailabel.datastore.utils.colors import GENERIC_ANATOMY_COLORS
 from monailabel.transform.writer import write_itk
 from monailabel.utils.others.generic import run_command
-
-#from monailabel.datastore.utils.dicom import dicom_web_upload_dcm
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +45,9 @@ def dicom_to_nifti(series_dir, is_seg=False):
             dicom_names = reader.GetGDCMSeriesFileNames(series_dir)
             dicom_names_sorted = sorted(
             dicom_names,
-            key=lambda filename: int(SimpleITK.ReadImage(filename).GetMetaData("0020|0013")),
+            key=lambda filename: int(SimpleITK.ReadImage(filename).GetMetaData("0020|0013")), # Sort by InstanceNumber tag ("0020|0013")
             reverse=True
             )
-            #dicom_names = tuple(sorted(dicom_names, reverse=True))
-            #breakpoint()
             reader.SetFileNames(dicom_names_sorted)
             image = reader.Execute()
         else:
@@ -65,62 +61,8 @@ def dicom_to_nifti(series_dir, is_seg=False):
             image = file_reader.Execute()
 
         logger.info(f"Image size: {image.GetSize()}")
-        #Resampling
-        ## Define desired output spacing (isotropic, e.g., 1 mm x 1 mm x 1 mm)
-        #output_spacing = [1.0, 1.0, 1.0]
-#
-        ## Calculate the required output size based on the original size and spacing
-        #original_size = image.GetSize()
-        #original_spacing = image.GetSpacing()
-        #output_size = [
-        #    int(original_size[i] * (original_spacing[i] / output_spacing[i]))
-        #    for i in range(3)
-        #]
-#
-        ## Set up the resampling filter
-        #resample = SimpleITK.ResampleImageFilter()
-        #resample.SetOutputSpacing(output_spacing)
-        #resample.SetSize(output_size)
-        #resample.SetInterpolator(SimpleITK.sitkLinear)
-        #resampled_image = resample.Execute(image)
-#
-        #output_dir = series_dir+"_resampled"
-        #os.makedirs(output_dir, exist_ok=True)
-#
-        #template_reader = SimpleITK.ImageFileReader()
-        #template_reader.SetFileName(dicom_names[0])
-        #template_reader.LoadPrivateTagsOn()  # Ensure private DICOM tags are loaded
-        #template_reader.ReadImageInformation()
-#
-        ## Write each slice of the resampled image as a separate DICOM file
-        #writer = SimpleITK.ImageFileWriter()
-        #writer.KeepOriginalImageUIDOn()  # Keep the original UID for consistency
-#
-        ## Loop through the slices in the resampled volume
-        #for i in range(resampled_image.GetDepth()):
-        #    # Extract a single slice from the 3D volume
-        #    slice_2d = resampled_image[:, :, i]
-        #    
-        #    # Update metadata for each slice based on the template
-        #    for key in template_reader.GetMetaDataKeys():
-        #        slice_2d.SetMetaData(key, template_reader.GetMetaData(key))
-        #    
-        #    # Set specific metadata for the current slice (e.g., Image Position Patient)
-        #    slice_2d.SetMetaData("0020|0032", '\\'.join(map(str, resampled_image.TransformIndexToPhysicalPoint((0, 0, i)))))
-        #    slice_2d.SetMetaData("0020|0013", str(i + 1))  # Instance Number
-#
-        #    # Define output filename
-        #    output_filename = os.path.join(output_dir, f"resampled_slice_{i:03d}.dcm")
-        #    
-        #    # Write the slice as a DICOM file
-        #    writer.SetFileName(output_filename)
-        #    writer.Execute(slice_2d)
-        #    dicom_web_upload_dcm(output_filename, client)
-
-    #    output_file = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
+        
         output_file = series_dir+".nii.gz"
-    #    dicom2nifti.dicom_series_to_nifti(series_dir, output_file, reorient_nifti=True)
-    #    breakpoint()
         SimpleITK.WriteImage(image, output_file)
 
     logger.info(f"dicom_to_nifti latency : {time.time() - start} (sec)")
