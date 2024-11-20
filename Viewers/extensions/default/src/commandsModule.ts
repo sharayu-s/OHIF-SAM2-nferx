@@ -523,6 +523,11 @@ const commandsModule = ({
         boxes: box_prompts,
         one: true,
       };
+
+      if(servicesManager.services.stateSyncService.state.synchronizersStore.nextObj!==undefined){
+        params.nextObj = servicesManager.services.stateSyncService.state.synchronizersStore.nextObj
+      }
+
       let data = MonaiLabelClient.constructFormData(params, null);
 
       axios
@@ -633,6 +638,11 @@ const commandsModule = ({
         neg_points: neg_points,
         boxes: box_prompts,
       };
+
+      if(servicesManager.services.stateSyncService.state.synchronizersStore.nextObj!==undefined){
+        params.nextObj = servicesManager.services.stateSyncService.state.synchronizersStore.nextObj
+      }
+
       let data = MonaiLabelClient.constructFormData(params, null);
 
       axios
@@ -677,6 +687,14 @@ const commandsModule = ({
           return error;
         })
         .finally(function () { });
+    },
+    saveAndNextObj: () => {
+      servicesManager.services.measurementService.clearMeasurements()
+      servicesManager.services.cornerstoneViewportService.resize()
+      if(servicesManager.services.stateSyncService.state.synchronizersStore.nextObj===undefined){
+        servicesManager.services.stateSyncService.state.synchronizersStore.nextObj=1
+      }
+      servicesManager.services.stateSyncService.state.synchronizersStore.nextObj=servicesManager.services.stateSyncService.state.synchronizersStore.nextObj+1
     },
     jumpToSegment: () => {
       const segmentationService = servicesManager.services.segmentationService;
@@ -844,6 +862,9 @@ const commandsModule = ({
     },
     sam2_one: {
       commandFn: actions.sam2_one,
+    },
+    saveAndNextObj: {
+      commandFn: actions.saveAndNextObj,
     },
     jumpToSegment: {
       commandFn: actions.jumpToSegment,

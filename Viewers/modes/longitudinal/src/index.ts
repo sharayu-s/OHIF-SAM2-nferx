@@ -119,6 +119,7 @@ function modeFactory({ modeConfiguration }) {
         'RectangleROI2',
         'sam2_one',
         'sam2',
+        'saveAndNextObj',
         'jumpToSegment',
         'toggleCurrentSegment',
         'MoreTools',

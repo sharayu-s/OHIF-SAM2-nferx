@@ -290,6 +290,17 @@ const toolbarButtons: Button[] = [
     },
   },
   {
+    id: 'saveAndNextObj',
+    uiType: 'ohif.radioGroup',
+    props: {
+      type: 'tool',
+      icon: 'icon-download',
+      label: 'saveAndNextObj',
+      tooltip: 'NextObj',
+      commands: 'saveAndNextObj',
+    },
+  },
+  {
     id: 'jumpToSegment',
     uiType: 'ohif.radioGroup',
     props: {
