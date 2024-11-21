@@ -39,7 +39,6 @@ const measurementServiceMappingsFactory = (
       EllipticalROI: ELLIPSE,
       CircleROI: CIRCLE,
       RectangleROI: RECTANGLE,
-      RectangleROI2: RECTANGLE,
       PlanarFreehandROI: POLYLINE,
       Bidirectional: BIDIRECTIONAL,
       ArrowAnnotate: POINT,
@@ -48,7 +47,6 @@ const measurementServiceMappingsFactory = (
       SplineROI: POLYLINE,
       LivewireContour: POLYLINE,
       Probe: POINT,
-      Probe2: POINT,
       UltrasoundDirectional: POLYLINE,
     };
 
@@ -96,7 +94,6 @@ const measurementServiceMappingsFactory = (
         },
       ],
     },
-
     EllipticalROI: {
       toAnnotation: EllipticalROI.toAnnotation,
       toMeasurement: csToolsAnnotation =>
@@ -113,7 +110,6 @@ const measurementServiceMappingsFactory = (
         },
       ],
     },
-
     CircleROI: {
       toAnnotation: CircleROI.toAnnotation,
       toMeasurement: csToolsAnnotation =>
@@ -130,7 +126,6 @@ const measurementServiceMappingsFactory = (
         },
       ],
     },
-
     RectangleROI: {
       toAnnotation: RectangleROI.toAnnotation,
       toMeasurement: csToolsAnnotation =>
@@ -147,24 +142,6 @@ const measurementServiceMappingsFactory = (
         },
       ],
     },
-
-    RectangleROI2: {
-      toAnnotation: RectangleROI.toAnnotation,
-      toMeasurement: csToolsAnnotation =>
-        RectangleROI.toMeasurement(
-          csToolsAnnotation,
-          displaySetService,
-          cornerstoneViewportService,
-          _getValueTypeFromToolType,
-          customizationService
-        ),
-      matchingCriteria: [
-        {
-          valueType: MeasurementService.VALUE_TYPES.POLYLINE,
-        },
-      ],
-    },
-
     PlanarFreehandROI: {
       toAnnotation: PlanarFreehandROI.toAnnotation,
       toMeasurement: csToolsAnnotation =>
@@ -181,7 +158,6 @@ const measurementServiceMappingsFactory = (
         },
       ],
     },
-
     SplineROI: {
       toAnnotation: SplineROI.toAnnotation,
       toMeasurement: csToolsAnnotation =>
@@ -198,7 +174,6 @@ const measurementServiceMappingsFactory = (
         },
       ],
     },
-
     LivewireContour: {
       toAnnotation: LivewireContour.toAnnotation,
       toMeasurement: csToolsAnnotation =>
@@ -215,7 +190,6 @@ const measurementServiceMappingsFactory = (
         },
       ],
     },
-
     ArrowAnnotate: {
       toAnnotation: ArrowAnnotate.toAnnotation,
       toMeasurement: csToolsAnnotation =>
@@ -233,7 +207,6 @@ const measurementServiceMappingsFactory = (
         },
       ],
     },
-
     Probe: {
       toAnnotation: Probe.toAnnotation,
       toMeasurement: csToolsAnnotation =>
@@ -251,25 +224,6 @@ const measurementServiceMappingsFactory = (
         },
       ],
     },
-
-    Probe2: {
-      toAnnotation: Probe.toAnnotation,
-      toMeasurement: csToolsAnnotation =>
-        Probe.toMeasurement(
-          csToolsAnnotation,
-          displaySetService,
-          cornerstoneViewportService,
-          _getValueTypeFromToolType,
-          customizationService
-        ),
-      matchingCriteria: [
-        {
-          valueType: MeasurementService.VALUE_TYPES.POINT,
-          points: 1,
-        },
-      ],
-    },
-
     CobbAngle: {
       toAnnotation: CobbAngle.toAnnotation,
       toMeasurement: csToolsAnnotation =>
@@ -286,7 +240,6 @@ const measurementServiceMappingsFactory = (
         },
       ],
     },
-
     Angle: {
       toAnnotation: Angle.toAnnotation,
       toMeasurement: csToolsAnnotation =>

@@ -80,17 +80,10 @@
     "Root": "/dicom-web/",
     "EnableWado": true,
     "WadoRoot": "/wado",
-    "Host": "127.0.0.1:8042",
+    "Host": "127.0.0.1",
     "Ssl": false,
     "StowMaxInstances": 10,
     "StowMaxSize": 10,
-    "QidoCaseSensitive": false,
-    "ServersInDatabase": true,
-    "Servers": {
-      "sample": {
-        "Url": "http://localhost:8042/dicom-web/",
-        "HasDelete": true
-      }
-    }
+    "QidoCaseSensitive": false
   }
 }

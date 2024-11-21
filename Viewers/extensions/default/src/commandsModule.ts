@@ -1,4 +1,4 @@
-import { utils, Types } from '@ohif/core';
+import { Types } from '@ohif/core';
 
 import { ContextMenuController, defaultContextMenu } from './CustomizableContextMenu';
 import DicomTagBrowser from './DicomTagBrowser/DicomTagBrowser';
@@ -10,13 +10,13 @@ import findViewportsByPosition, {
 import { ContextMenuProps } from './CustomizableContextMenu/types';
 import { NavigateHistory } from './types/commandModuleTypes';
 import { history } from '@ohif/app';
+import { useViewportGridStore } from './stores/useViewportGridStore';
+import { useDisplaySetSelectorStore } from './stores/useDisplaySetSelectorStore';
+import { useHangingProtocolStageIndexStore } from './stores/useHangingProtocolStageIndexStore';
+import { useToggleHangingProtocolStore } from './stores/useToggleHangingProtocolStore';
+import { useViewportsByPositionStore } from './stores/useViewportsByPositionStore';
+import { useToggleOneUpViewportGridStore } from './stores/useToggleOneUpViewportGridStore';
 
-import { defaultRouteInit } from '@routes/Mode/defaultRouteInit'
-
-import MonaiLabelClient from '../../monai-label/src/services/MonaiLabelClient';
-import axios from 'axios';
-
-const { subscribeToNextViewportGridChange } = utils;
 export type HangingProtocolParams = {
   protocolId?: string;
   stageIndex?: number;
@@ -40,9 +40,7 @@ const commandsModule = ({
     hangingProtocolService,
     uiNotificationService,
     viewportGridService,
-    segmentationService,
     displaySetService,
-    stateSyncService,
   } = servicesManager.services;
 
   // Define a context menu controller for use with any context menus
@@ -140,9 +138,9 @@ const commandsModule = ({
         // the activeViewportId
         const state = viewportGridService.getState();
         const hpInfo = hangingProtocolService.getState();
-        const stateSyncReduce = reuseCachedLayouts(state, hangingProtocolService, stateSyncService);
-        const { hangingProtocolStageIndexMap, viewportGridStore, displaySetSelectorMap } =
-          stateSyncReduce;
+        reuseCachedLayouts(state, hangingProtocolService);
+        const { hangingProtocolStageIndexMap } = useHangingProtocolStageIndexStore.getState();
+        const { displaySetSelectorMap } = useDisplaySetSelectorStore.getState();
 
         if (!protocolId) {
           // Reuse the previous protocol id, and optionally stage
@@ -167,10 +165,12 @@ const commandsModule = ({
           hangingProtocolService.setActiveStudyUID(activeStudyUID);
         }
 
-        const storedHanging = `${hangingProtocolService.getState().activeStudyUID}:${protocolId}:${useStageIdx || 0
-          }`;
+        const storedHanging = `${hangingProtocolService.getState().activeStudyUID}:${protocolId}:${
+          useStageIdx || 0
+        }`;
 
-        const restoreProtocol = !reset && viewportGridStore[storedHanging];
+        const { viewportGridState } = useViewportGridStore.getState();
+        const restoreProtocol = !reset && viewportGridState[storedHanging];
 
         if (
           protocolId === hpInfo.protocolId &&
@@ -190,17 +190,15 @@ const commandsModule = ({
             restoreProtocol,
           });
           if (restoreProtocol) {
-            viewportGridService.set(viewportGridStore[storedHanging]);
+            viewportGridService.set(viewportGridState[storedHanging]);
           }
         }
         // Do this after successfully applying the update
-        // Note, don't store the active display set - it is only needed while
-        // changing display sets.  This causes jump to measurement to fail on
-        // multi-study display.
-        delete displaySetSelectorMap[
-          `${activeStudyUID || hpInfo.activeStudyUID}:activeDisplaySet:0`
-        ];
-        stateSyncService.store(stateSyncReduce);
+        const { setDisplaySetSelector } = useDisplaySetSelectorStore.getState();
+        setDisplaySetSelector(
+          `${activeStudyUID || hpInfo.activeStudyUID}:activeDisplaySet:0`,
+          null
+        );
         return true;
       } catch (e) {
         console.error(e);
@@ -220,7 +218,8 @@ const commandsModule = ({
         stageIndex: desiredStageIndex,
         activeStudy,
       } = hangingProtocolService.getActiveProtocol();
-      const { toggleHangingProtocol } = stateSyncService.getState();
+      const { toggleHangingProtocol, setToggleHangingProtocol } =
+        useToggleHangingProtocolStore.getState();
       const storedHanging = `${activeStudy.StudyInstanceUID}:${protocolId}:${stageIndex | 0}`;
       if (
         protocol.id === protocolId &&
@@ -232,14 +231,9 @@ const commandsModule = ({
         };
         return actions.setHangingProtocol(previousState);
       } else {
-        stateSyncService.store({
-          toggleHangingProtocol: {
-            ...toggleHangingProtocol,
-            [storedHanging]: {
-              protocolId: protocol.id,
-              stageIndex: desiredStageIndex,
-            },
-          },
+        setToggleHangingProtocol(storedHanging, {
+          protocolId: protocol.id,
+          stageIndex: desiredStageIndex,
         });
         return actions.setHangingProtocol({
           protocolId,
@@ -286,12 +280,15 @@ const commandsModule = ({
 
       const completeLayout = () => {
         const state = viewportGridService.getState();
-        const stateReduce = findViewportsByPosition(state, { numRows, numCols }, stateSyncService);
+        findViewportsByPosition(state, { numRows, numCols });
+
+        const { viewportsByPosition, initialInDisplay } = useViewportsByPositionStore.getState();
+
         const findOrCreateViewport = layoutFindOrCreate.bind(
           null,
           hangingProtocolService,
           isHangingProtocolLayout,
-          stateReduce.viewportsByPosition
+          { ...viewportsByPosition, initialInDisplay }
         );
 
         viewportGridService.setLayout({
@@ -300,7 +297,6 @@ const commandsModule = ({
           findOrCreateViewport,
           isHangingProtocolLayout,
         });
-        stateSyncService.store(stateReduce);
       };
       // Need to finish any work in the callback
       window.setTimeout(completeLayout, 0);
@@ -314,9 +310,9 @@ const commandsModule = ({
 
       if (layout.numCols === 1 && layout.numRows === 1) {
         // The viewer is in one-up. Check if there is a state to restore/toggle back to.
-        const { toggleOneUpViewportGridStore } = stateSyncService.getState();
+        const { toggleOneUpViewportGridStore } = useToggleOneUpViewportGridStore.getState();
 
-        if (!toggleOneUpViewportGridStore.layout) {
+        if (!toggleOneUpViewportGridStore) {
           return;
         }
         // There is a state to toggle back to. The viewport that was
@@ -332,14 +328,14 @@ const commandsModule = ({
           displaySetInstanceUIDs.length > 1
             ? []
             : displaySetInstanceUIDs
-              .map(displaySetInstanceUID =>
-                hangingProtocolService.getViewportsRequireUpdate(
-                  viewportIdToUpdate,
-                  displaySetInstanceUID,
-                  isHangingProtocolLayout
+                .map(displaySetInstanceUID =>
+                  hangingProtocolService.getViewportsRequireUpdate(
+                    viewportIdToUpdate,
+                    displaySetInstanceUID,
+                    isHangingProtocolLayout
+                  )
                 )
-              )
-              .flat();
+                .flat();
 
         // findOrCreateViewport returns either one of the updatedViewportsViaHP
         // returned from the HP service OR if there is not one from the HP service then
@@ -357,9 +353,9 @@ const commandsModule = ({
 
           return viewport
             ? // Use the applicable viewport from the HP updated viewports
-            { viewportOptions, displaySetOptions, ...viewport }
+              { viewportOptions, displaySetOptions, ...viewport }
             : // Use the previous viewport for the given position
-            preOneUpViewport;
+              preOneUpViewport;
         };
 
         const layoutOptions = viewportGridService.getLayoutOptionsFromState(
@@ -375,15 +371,18 @@ const commandsModule = ({
           findOrCreateViewport,
           isHangingProtocolLayout: true,
         });
+
+        // Reset crosshairs after restoring the layout
+        setTimeout(() => {
+          commandsManager.runCommand('resetCrosshairs');
+        }, 0);
       } else {
         // We are not in one-up, so toggle to one up.
 
         // Store the current viewport grid state so we can toggle it back later.
-        stateSyncService.store({
-          toggleOneUpViewportGridStore: viewportGridState,
-        });
+        const { setToggleOneUpViewportGridStore } = useToggleOneUpViewportGridStore.getState();
+        setToggleOneUpViewportGridStore(viewportGridState);
 
-        // This findOrCreateViewport only return one viewport - the active
         // one being toggled to one up.
         const findOrCreateViewport = () => {
           return {
@@ -400,19 +399,6 @@ const commandsModule = ({
           findOrCreateViewport,
           isHangingProtocolLayout: true,
         });
-
-        // Subscribe to ANY (i.e. manual and hanging protocol) layout changes so that
-        // any grid layout state to toggle to from one up is cleared. This is performed on
-        // a timeout to avoid clearing the state for the actual to one up change.
-        // Whenever the next layout change event is fired, the subscriptions are unsubscribed.
-        const clearToggleOneUpViewportGridStore = () => {
-          const toggleOneUpViewportGridStore = {};
-          stateSyncService.store({
-            toggleOneUpViewportGridStore,
-          });
-        };
-
-        subscribeToNextViewportGridChange(viewportGridService, clearToggleOneUpViewportGridStore);
       }
     },
 
@@ -438,7 +424,7 @@ const commandsModule = ({
       history.navigate(historyArgs.to, historyArgs.options);
     },
 
-    openDICOMTagViewer() {
+    openDICOMTagViewer({ displaySetInstanceUID }: { displaySetInstanceUID?: string }) {
       const { activeViewportId, viewports } = viewportGridService.getState();
       const activeViewportSpecificData = viewports.get(activeViewportId);
       const { displaySetInstanceUIDs } = activeViewportSpecificData;
@@ -446,270 +432,19 @@ const commandsModule = ({
       const displaySets = displaySetService.activeDisplaySets;
       const { UIModalService } = servicesManager.services;
 
-      const displaySetInstanceUID = displaySetInstanceUIDs[0];
+      const defaultDisplaySetInstanceUID = displaySetInstanceUID || displaySetInstanceUIDs[0];
       UIModalService.show({
         content: DicomTagBrowser,
         contentProps: {
           displaySets,
-          displaySetInstanceUID,
+          displaySetInstanceUID: defaultDisplaySetInstanceUID,
           onClose: UIModalService.hide,
         },
         containerDimensions: 'w-[70%] max-w-[900px]',
         title: 'DICOM Tag Browser',
       });
     },
-    async sam2_one() {
-      const response = await MonaiLabelClient.api_get('/monai/info/');
-      if (response.status === 200) {
-        uiNotificationService.show({
-          title: 'MONAI Label',
-          message: 'Connecting to MONAI Label',
-          type: 'info',
-          duration: 3000,
-        });
-      } else {
-        uiNotificationService.show({
-          title: 'MONAI Label',
-          message: 'Failed to connect to MONAI Label',
-          type: 'error',
-          duration: 3000,
-        });
-        return response;
-      }
-      const { activeViewportId, viewports } = viewportGridService.getState();
-      const activeViewportSpecificData = viewports.get(activeViewportId);
-      const { displaySetInstanceUIDs } = activeViewportSpecificData;
 
-      const displaySets = displaySetService.activeDisplaySets;
-      //const { UIModalService } = servicesManager.services;
-
-      const displaySetInstanceUID = displaySetInstanceUIDs[0];
-      const currentDisplaySets = displaySets.filter(e => {
-        return e.displaySetInstanceUID == displaySetInstanceUID;
-      })[0];
-
-      //const prompts = Array.from(measurementService.measurements).filter((e)=>{return e[1].data!==undefined}).map((e)=>{return Object.values(e[1].data)[0].index})
-      const pos_points = Array.from(measurementService.measurements)
-        .filter(e => {
-          return e[1].toolName === 'Probe';
-        })
-        .map(e => {
-          return Object.values(e[1].data)[0].index;
-        });
-      const neg_points = Array.from(measurementService.measurements)
-        .filter(e => {
-          return e[1].toolName === 'Probe2';
-        })
-        .map(e => {
-          return Object.values(e[1].data)[0].index;
-        });
-      const bd_boxes = Array.from(measurementService.measurements)
-        .filter(e => { return e[1].toolName === 'RectangleROI2' })
-        .map(e => { return Object.values(e[1].data)[0].pointsInShape })
-
-      let box_prompts = bd_boxes.map(e => { return [e.at(0).pointIJK, e.at(-1).pointIJK] })
-
-      let url = `/monai/infer/segmentation?image=${currentDisplaySets.SeriesInstanceUID}&output=dicom_seg`;
-      let params = {
-        largest_cc: false,
-        device: response.data.trainers.segmentation.config.device,
-        result_extension: '.nii.gz',
-        result_dtype: 'uint16',
-        result_compress: false,
-        studyInstanceUID: currentDisplaySets.StudyInstanceUID,
-        restore_label_idx: false,
-        pos_points: pos_points,
-        neg_points: neg_points,
-        boxes: box_prompts,
-        one: true,
-      };
-
-      if(servicesManager.services.stateSyncService.state.synchronizersStore.nextObj!==undefined){
-        params.nextObj = servicesManager.services.stateSyncService.state.synchronizersStore.nextObj
-      }
-
-      let data = MonaiLabelClient.constructFormData(params, null);
-
-      axios
-        .post(url, data, {
-          responseType: 'arraybuffer',
-          headers: {
-            accept: 'application/json, multipart/form-data',
-          },
-        })
-        .then(function (response) {
-          console.debug(response);
-          if (response.status === 200) {
-            uiNotificationService.show({
-              title: 'MONAI Label',
-              message: 'Run Segmentation - Successful',
-              type: 'success',
-              duration: 2000,
-            });
-            let currentDate = utils.formatDate(Date.now(), 'YYYYMMDD')
-            //old segementation is deleted at PACS, should be excluded from activeDisplaySets
-            displaySetService.activeDisplaySets = displaySetService.activeDisplaySets.filter(e => {
-              return (e.SeriesDescription != 'SAM2_' + currentDisplaySets.SeriesDescription) || (e.SeriesDate != currentDate);
-            })
-
-            let studyInstanceUID = currentDisplaySets.StudyInstanceUID
-            let studyInstanceUIDs = [studyInstanceUID, 1]
-            let dataSource = extensionManager.getActiveDataSource()[0]
-            let filters = { 'StudyInstanceUIDs': [studyInstanceUID] }
-            let appConfig = config
-            let unsubscriptions = defaultRouteInit({ servicesManager, studyInstanceUIDs, dataSource, filters, appConfig }, "default").then(async function (unsub) {
-              const displaySets = displaySetService.activeDisplaySets;
-              const currentDisplaySet = displaySets.filter(e => {
-                return (e.SeriesDescription == 'SAM2_' + currentDisplaySets.SeriesDescription) && (e.SeriesDate == currentDate);
-              })[0];
-              let updatedViewports = hangingProtocolService.getViewportsRequireUpdate(activeViewportId, currentDisplaySet.displaySetInstanceUID, true)
-              viewportGridService.setDisplaySetsForViewports(updatedViewports)
-            })
-          }
-          return response;
-        })
-        .catch(function (error) {
-          return error;
-        })
-        .finally(function () { });
-    },
-    async sam2() {
-      const response = await MonaiLabelClient.api_get('/monai/info/');
-      if (response.status === 200) {
-        uiNotificationService.show({
-          title: 'MONAI Label',
-          message: 'Connecting to MONAI Label',
-          type: 'info',
-          duration: 3000,
-        });
-      } else {
-        uiNotificationService.show({
-          title: 'MONAI Label',
-          message: 'Failed to connect to MONAI Label',
-          type: 'error',
-          duration: 3000,
-        });
-        return response;
-      }
-      const { activeViewportId, viewports } = viewportGridService.getState();
-      const activeViewportSpecificData = viewports.get(activeViewportId);
-      const { displaySetInstanceUIDs } = activeViewportSpecificData;
-
-      const displaySets = displaySetService.activeDisplaySets;
-      //const { UIModalService } = servicesManager.services;
-
-      const displaySetInstanceUID = displaySetInstanceUIDs[0];
-      const currentDisplaySets = displaySets.filter(e => {
-        return e.displaySetInstanceUID == displaySetInstanceUID;
-      })[0];
-
-      //const prompts = Array.from(measurementService.measurements).filter((e)=>{return e[1].data!==undefined}).map((e)=>{return Object.values(e[1].data)[0].index})
-      const pos_points = Array.from(measurementService.measurements)
-        .filter(e => {
-          return e[1].toolName === 'Probe';
-        })
-        .map(e => {
-          return Object.values(e[1].data)[0].index;
-        });
-      const neg_points = Array.from(measurementService.measurements)
-        .filter(e => {
-          return e[1].toolName === 'Probe2';
-        })
-        .map(e => {
-          return Object.values(e[1].data)[0].index;
-        });
-
-      const bd_boxes = Array.from(measurementService.measurements)
-        .filter(e => { return e[1].toolName === 'RectangleROI2' })
-        .map(e => { return Object.values(e[1].data)[0].pointsInShape })
-
-      let box_prompts = bd_boxes.map(e => { return [e.at(0).pointIJK, e.at(-1).pointIJK] })
-
-      let url = `/monai/infer/segmentation?image=${currentDisplaySets.SeriesInstanceUID}&output=dicom_seg`;
-      let params = {
-        largest_cc: false,
-        device: response.data.trainers.segmentation.config.device,
-        result_extension: '.nii.gz',
-        result_dtype: 'uint16',
-        result_compress: false,
-        studyInstanceUID: currentDisplaySets.StudyInstanceUID,
-        restore_label_idx: false,
-        pos_points: pos_points,
-        neg_points: neg_points,
-        boxes: box_prompts,
-      };
-
-      if(servicesManager.services.stateSyncService.state.synchronizersStore.nextObj!==undefined){
-        params.nextObj = servicesManager.services.stateSyncService.state.synchronizersStore.nextObj
-      }
-
-      let data = MonaiLabelClient.constructFormData(params, null);
-
-      axios
-        .post(url, data, {
-          responseType: 'arraybuffer',
-          headers: {
-            accept: 'application/json, multipart/form-data',
-          },
-        })
-        .then(function (response) {
-          console.debug(response);
-          if (response.status === 200) {
-            uiNotificationService.show({
-              title: 'MONAI Label',
-              message: 'Run Segmentation - Successful',
-              type: 'success',
-              duration: 2000,
-            });
-            let currentDate = utils.formatDate(Date.now(), 'YYYYMMDD')
-            displaySetService.activeDisplaySets = displaySetService.activeDisplaySets.filter(e => {
-              return (e.SeriesDescription != 'SAM2_' + currentDisplaySets.SeriesDescription) || (e.SeriesDate != currentDate);
-            })
-
-            let studyInstanceUID = currentDisplaySets.StudyInstanceUID
-            let studyInstanceUIDs = [studyInstanceUID, 1]
-            let dataSource = extensionManager.getActiveDataSource()[0]
-            let filters = { 'StudyInstanceUIDs': [studyInstanceUID] }
-            let appConfig = config
-            defaultRouteInit({ servicesManager, studyInstanceUIDs, dataSource, filters, appConfig }, "default").then(function (unsub) {
-
-              const displaySets = displaySetService.activeDisplaySets;
-              const currentDisplaySet = displaySets.filter(e => {
-                return (e.SeriesDescription == 'SAM2_' + currentDisplaySets.SeriesDescription) && (e.SeriesDate == currentDate);
-              })[0];
-              let updatedViewports = hangingProtocolService.getViewportsRequireUpdate(activeViewportId, currentDisplaySet.displaySetInstanceUID, true)
-              viewportGridService.setDisplaySetsForViewports(updatedViewports)
-            })
-          }
-          return response;
-        })
-        .catch(function (error) {
-          return error;
-        })
-        .finally(function () { });
-    },
-    saveAndNextObj: () => {
-      servicesManager.services.measurementService.clearMeasurements()
-      servicesManager.services.cornerstoneViewportService.resize()
-      if(servicesManager.services.stateSyncService.state.synchronizersStore.nextObj===undefined){
-        servicesManager.services.stateSyncService.state.synchronizersStore.nextObj=1
-      }
-      servicesManager.services.stateSyncService.state.synchronizersStore.nextObj=servicesManager.services.stateSyncService.state.synchronizersStore.nextObj+1
-    },
-    jumpToSegment: () => {
-      const segmentationService = servicesManager.services.segmentationService;
-      const activeSegmentation = segmentationService.getActiveSegmentation();
-      if (activeSegmentation != undefined) {
-        segmentationService.jumpToSegmentCenter(activeSegmentation.id, 1, 'default')
-      }
-    },
-    toggleCurrentSegment: () => {
-      const segmentationService = servicesManager.services.segmentationService;
-      const activeSegmentation = segmentationService.getActiveSegmentation();
-      if (activeSegmentation != undefined) {
-        segmentationService.toggleSegmentationVisibility(activeSegmentation.id)
-      }
-    },
     /**
      * Toggle viewport overlay (the information panel shown on the four corners
      * of the viewport)
@@ -856,21 +591,6 @@ const commandsModule = ({
     },
     openDICOMTagViewer: {
       commandFn: actions.openDICOMTagViewer,
-    },
-    sam2: {
-      commandFn: actions.sam2,
-    },
-    sam2_one: {
-      commandFn: actions.sam2_one,
-    },
-    saveAndNextObj: {
-      commandFn: actions.saveAndNextObj,
-    },
-    jumpToSegment: {
-      commandFn: actions.jumpToSegment,
-    },
-    toggleCurrentSegment: {
-      commandFn: actions.toggleCurrentSegment,
     },
     updateViewportDisplaySet: {
       commandFn: actions.updateViewportDisplaySet,

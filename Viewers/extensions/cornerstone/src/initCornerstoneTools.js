@@ -2,9 +2,8 @@ import {
   PanTool,
   WindowLevelTool,
   StackScrollTool,
-  StackScrollMouseWheelTool,
+  VolumeRotateTool,
   ZoomTool,
-  VolumeRotateMouseWheelTool,
   MIPJumpToClickTool,
   LengthTool,
   RectangleROITool,
@@ -19,7 +18,6 @@ import {
   CobbAngleTool,
   MagnifyTool,
   CrosshairsTool,
-  SegmentationDisplayTool,
   RectangleScissorsTool,
   SphereScissorsTool,
   CircleScissorsTool,
@@ -43,30 +41,22 @@ import {
 import CalibrationLineTool from './tools/CalibrationLineTool';
 import ImageOverlayViewerTool from './tools/ImageOverlayViewerTool';
 
-class Probe2Tool extends ProbeTool {}
-Probe2Tool.toolName = 'Probe2';
-
-class RectangleROI2Tool extends RectangleROITool {}
-RectangleROI2Tool.toolName = 'RectangleROI2';
-
 export default function initCornerstoneTools(configuration = {}) {
   CrosshairsTool.isAnnotation = false;
   ReferenceLinesTool.isAnnotation = false;
   AdvancedMagnifyTool.isAnnotation = false;
+  PlanarFreehandContourSegmentationTool.isAnnotation = false;
 
   init(configuration);
   addTool(PanTool);
   addTool(WindowLevelTool);
-  addTool(StackScrollMouseWheelTool);
   addTool(StackScrollTool);
+  addTool(VolumeRotateTool);
   addTool(ZoomTool);
   addTool(ProbeTool);
-  addTool(Probe2Tool);
-  addTool(VolumeRotateMouseWheelTool);
   addTool(MIPJumpToClickTool);
   addTool(LengthTool);
   addTool(RectangleROITool);
-  addTool(RectangleROI2Tool);
   addTool(RectangleROIThresholdTool);
   addTool(EllipticalROITool);
   addTool(CircleROITool);
@@ -77,7 +67,6 @@ export default function initCornerstoneTools(configuration = {}) {
   addTool(CobbAngleTool);
   addTool(MagnifyTool);
   addTool(CrosshairsTool);
-  addTool(SegmentationDisplayTool);
   addTool(RectangleScissorsTool);
   addTool(SphereScissorsTool);
   addTool(CircleScissorsTool);
@@ -100,7 +89,6 @@ export default function initCornerstoneTools(configuration = {}) {
   const annotationStyle = {
     textBoxFontSize: '15px',
     lineWidth: '1.5',
-    color2: 'rgb(255, 0, 0)',
   };
 
   const defaultStyles = annotation.config.style.getDefaultToolStyles();
@@ -117,16 +105,13 @@ const toolNames = {
   ArrowAnnotate: ArrowAnnotateTool.toolName,
   WindowLevel: WindowLevelTool.toolName,
   StackScroll: StackScrollTool.toolName,
-  StackScrollMouseWheel: StackScrollMouseWheelTool.toolName,
   Zoom: ZoomTool.toolName,
-  VolumeRotateMouseWheel: VolumeRotateMouseWheelTool.toolName,
+  VolumeRotate: VolumeRotateTool.toolName,
   MipJumpToClick: MIPJumpToClickTool.toolName,
   Length: LengthTool.toolName,
   DragProbe: DragProbeTool.toolName,
   Probe: ProbeTool.toolName,
-  Probe2: Probe2Tool.toolName,
   RectangleROI: RectangleROITool.toolName,
-  RectangleROI2: RectangleROI2Tool.toolName,
   RectangleROIThreshold: RectangleROIThresholdTool.toolName,
   EllipticalROI: EllipticalROITool.toolName,
   CircleROI: CircleROITool.toolName,
@@ -135,7 +120,6 @@ const toolNames = {
   CobbAngle: CobbAngleTool.toolName,
   Magnify: MagnifyTool.toolName,
   Crosshairs: CrosshairsTool.toolName,
-  SegmentationDisplay: SegmentationDisplayTool.toolName,
   Brush: BrushTool.toolName,
   PaintFill: PaintFillTool.toolName,
   ReferenceLines: ReferenceLinesTool.toolName,
