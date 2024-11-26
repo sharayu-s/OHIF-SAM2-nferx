@@ -41,6 +41,12 @@ import {
 import CalibrationLineTool from './tools/CalibrationLineTool';
 import ImageOverlayViewerTool from './tools/ImageOverlayViewerTool';
 
+class Probe2Tool extends ProbeTool {}
+Probe2Tool.toolName = 'Probe2';
+
+class RectangleROI2Tool extends RectangleROITool {}
+RectangleROI2Tool.toolName = 'RectangleROI2';
+
 export default function initCornerstoneTools(configuration = {}) {
   CrosshairsTool.isAnnotation = false;
   ReferenceLinesTool.isAnnotation = false;
@@ -54,9 +60,11 @@ export default function initCornerstoneTools(configuration = {}) {
   addTool(VolumeRotateTool);
   addTool(ZoomTool);
   addTool(ProbeTool);
+  addTool(Probe2Tool);
   addTool(MIPJumpToClickTool);
   addTool(LengthTool);
   addTool(RectangleROITool);
+  addTool(RectangleROI2Tool);
   addTool(RectangleROIThresholdTool);
   addTool(EllipticalROITool);
   addTool(CircleROITool);
@@ -111,7 +119,9 @@ const toolNames = {
   Length: LengthTool.toolName,
   DragProbe: DragProbeTool.toolName,
   Probe: ProbeTool.toolName,
+  Probe2: Probe2Tool.toolName,
   RectangleROI: RectangleROITool.toolName,
+  RectangleROI2: RectangleROI2Tool.toolName,
   RectangleROIThreshold: RectangleROIThresholdTool.toolName,
   EllipticalROI: EllipticalROITool.toolName,
   CircleROI: CircleROITool.toolName,

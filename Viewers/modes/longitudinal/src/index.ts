@@ -111,9 +111,18 @@ function modeFactory({ modeConfiguration }) {
         'Capture',
         'Layout',
         'Crosshairs',
+        'Probe',
+        'Probe2',
+        'RectangleROI2',
+        'sam2_one',
+        'sam2',
+        'saveAndNextObj',
+        'jumpToSegment',
+        'toggleCurrentSegment',
         'MoreTools',
       ]);
 
+      toolbarService.createButtonSection('segmentationToolbox', ['BrushTools', 'Shapes']);
       // // ActivatePanel event trigger for when a segmentation or measurement is added.
       // // Do not force activation so as to respect the state the user may have left the UI in.
       _activatePanelTriggersSubscriptions = [

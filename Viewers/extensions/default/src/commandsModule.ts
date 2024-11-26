@@ -17,6 +17,10 @@ import { useToggleHangingProtocolStore } from './stores/useToggleHangingProtocol
 import { useViewportsByPositionStore } from './stores/useViewportsByPositionStore';
 import { useToggleOneUpViewportGridStore } from './stores/useToggleOneUpViewportGridStore';
 
+import { defaultRouteInit } from '@routes/Mode/defaultRouteInit'
+import MonaiLabelClient from '../../monai-label/src/services/MonaiLabelClient';
+import axios from 'axios';
+
 export type HangingProtocolParams = {
   protocolId?: string;
   stageIndex?: number;
@@ -445,6 +449,259 @@ const commandsModule = ({
       });
     },
 
+    async sam2_one() {
+      const response = await MonaiLabelClient.api_get('/monai/info/');
+      if (response.status === 200) {
+        uiNotificationService.show({
+          title: 'MONAI Label',
+          message: 'Connecting to MONAI Label',
+          type: 'info',
+          duration: 3000,
+        });
+      } else {
+        uiNotificationService.show({
+          title: 'MONAI Label',
+          message: 'Failed to connect to MONAI Label',
+          type: 'error',
+          duration: 3000,
+        });
+        return response;
+      }
+      const { activeViewportId, viewports } = viewportGridService.getState();
+      const activeViewportSpecificData = viewports.get(activeViewportId);
+      const { displaySetInstanceUIDs } = activeViewportSpecificData;
+
+      const displaySets = displaySetService.activeDisplaySets;
+      //const { UIModalService } = servicesManager.services;
+
+      const displaySetInstanceUID = displaySetInstanceUIDs[0];
+      const currentDisplaySets = displaySets.filter(e => {
+        return e.displaySetInstanceUID == displaySetInstanceUID;
+      })[0];
+
+      //const prompts = Array.from(measurementService.measurements).filter((e)=>{return e[1].data!==undefined}).map((e)=>{return Object.values(e[1].data)[0].index})
+      const pos_points = Array.from(measurementService.measurements)
+        .filter(e => {
+          return e[1].toolName === 'Probe';
+        })
+        .map(e => {
+          return Object.values(e[1].data)[0].index;
+        });
+      const neg_points = Array.from(measurementService.measurements)
+        .filter(e => {
+          return e[1].toolName === 'Probe2';
+        })
+        .map(e => {
+          return Object.values(e[1].data)[0].index;
+        });
+      const bd_boxes = Array.from(measurementService.measurements)
+        .filter(e => { return e[1].toolName === 'RectangleROI2' })
+        .map(e => { return Object.values(e[1].data)[0].pointsInShape })
+
+      let box_prompts = bd_boxes.map(e => { return [e.at(0).pointIJK, e.at(-1).pointIJK] })
+
+      let url = `/monai/infer/segmentation?image=${currentDisplaySets.SeriesInstanceUID}&output=dicom_seg`;
+      let params = {
+        largest_cc: false,
+        device: response.data.trainers.segmentation.config.device,
+        result_extension: '.nii.gz',
+        result_dtype: 'uint16',
+        result_compress: false,
+        studyInstanceUID: currentDisplaySets.StudyInstanceUID,
+        restore_label_idx: false,
+        pos_points: pos_points,
+        neg_points: neg_points,
+        boxes: box_prompts,
+        one: true,
+      };
+
+      if(useToggleHangingProtocolStore.getState().toggleHangingProtocol.nextObj!==undefined){
+        params.nextObj = useToggleHangingProtocolStore.getState().toggleHangingProtocol.nextObj
+      }
+
+      let data = MonaiLabelClient.constructFormData(params, null);
+
+      axios
+        .post(url, data, {
+          responseType: 'arraybuffer',
+          headers: {
+            accept: 'application/json, multipart/form-data',
+          },
+        })
+        .then(function (response) {
+          console.debug(response);
+          if (response.status === 200) {
+            uiNotificationService.show({
+              title: 'MONAI Label',
+              message: 'Run Segmentation - Successful',
+              type: 'success',
+              duration: 2000,
+            });
+            let currentDate = utils.formatDate(Date.now(), 'YYYYMMDD')
+            //old segementation is deleted at PACS, should be excluded from activeDisplaySets
+            displaySetService.activeDisplaySets = displaySetService.activeDisplaySets.filter(e => {
+              return (e.SeriesDescription != 'SAM2_' + currentDisplaySets.SeriesDescription) || (e.SeriesDate != currentDate);
+            })
+
+            let studyInstanceUID = currentDisplaySets.StudyInstanceUID
+            let studyInstanceUIDs = [studyInstanceUID, 1]
+            let dataSource = extensionManager.getActiveDataSource()[0]
+            let filters = { 'StudyInstanceUIDs': [studyInstanceUID] }
+            let appConfig = config
+            let unsubscriptions = defaultRouteInit({ servicesManager, studyInstanceUIDs, dataSource, filters, appConfig }, "default").then(async function (unsub) {
+              const displaySets = displaySetService.activeDisplaySets;
+              const currentDisplaySet = displaySets.filter(e => {
+                return (e.SeriesDescription == 'SAM2_' + currentDisplaySets.SeriesDescription) && (e.SeriesDate == currentDate);
+              })[0];
+              let updatedViewports = hangingProtocolService.getViewportsRequireUpdate(activeViewportId, currentDisplaySet.displaySetInstanceUID, true)
+              viewportGridService.setDisplaySetsForViewports(updatedViewports)
+            })
+          }
+          return response;
+        })
+        .catch(function (error) {
+          return error;
+        })
+        .finally(function () { });
+    },
+    async sam2() {
+      const response = await MonaiLabelClient.api_get('/monai/info/');
+      if (response.status === 200) {
+        uiNotificationService.show({
+          title: 'MONAI Label',
+          message: 'Connecting to MONAI Label',
+          type: 'info',
+          duration: 3000,
+        });
+      } else {
+        uiNotificationService.show({
+          title: 'MONAI Label',
+          message: 'Failed to connect to MONAI Label',
+          type: 'error',
+          duration: 3000,
+        });
+        return response;
+      }
+      const { activeViewportId, viewports } = viewportGridService.getState();
+      const activeViewportSpecificData = viewports.get(activeViewportId);
+      const { displaySetInstanceUIDs } = activeViewportSpecificData;
+
+      const displaySets = displaySetService.activeDisplaySets;
+      //const { UIModalService } = servicesManager.services;
+
+      const displaySetInstanceUID = displaySetInstanceUIDs[0];
+      const currentDisplaySets = displaySets.filter(e => {
+        return e.displaySetInstanceUID == displaySetInstanceUID;
+      })[0];
+
+      //const prompts = Array.from(measurementService.measurements).filter((e)=>{return e[1].data!==undefined}).map((e)=>{return Object.values(e[1].data)[0].index})
+      const pos_points = Array.from(measurementService.measurements)
+        .filter(e => {
+          return e[1].toolName === 'Probe';
+        })
+        .map(e => {
+          return Object.values(e[1].data)[0].index;
+        });
+      const neg_points = Array.from(measurementService.measurements)
+        .filter(e => {
+          return e[1].toolName === 'Probe2';
+        })
+        .map(e => {
+          return Object.values(e[1].data)[0].index;
+        });
+
+      const bd_boxes = Array.from(measurementService.measurements)
+        .filter(e => { return e[1].toolName === 'RectangleROI2' })
+        .map(e => { return Object.values(e[1].data)[0].pointsInShape })
+
+      let box_prompts = bd_boxes.map(e => { return [e.at(0).pointIJK, e.at(-1).pointIJK] })
+
+      let url = `/monai/infer/segmentation?image=${currentDisplaySets.SeriesInstanceUID}&output=dicom_seg`;
+      let params = {
+        largest_cc: false,
+        device: response.data.trainers.segmentation.config.device,
+        result_extension: '.nii.gz',
+        result_dtype: 'uint16',
+        result_compress: false,
+        studyInstanceUID: currentDisplaySets.StudyInstanceUID,
+        restore_label_idx: false,
+        pos_points: pos_points,
+        neg_points: neg_points,
+        boxes: box_prompts,
+      };
+
+      if(useToggleHangingProtocolStore.getState().toggleHangingProtocol.nextObj!==undefined){
+        params.nextObj = useToggleHangingProtocolStore.getState().toggleHangingProtocol.nextObj
+      }
+
+      let data = MonaiLabelClient.constructFormData(params, null);
+
+      axios
+        .post(url, data, {
+          responseType: 'arraybuffer',
+          headers: {
+            accept: 'application/json, multipart/form-data',
+          },
+        })
+        .then(function (response) {
+          console.debug(response);
+          if (response.status === 200) {
+            uiNotificationService.show({
+              title: 'MONAI Label',
+              message: 'Run Segmentation - Successful',
+              type: 'success',
+              duration: 2000,
+            });
+            let currentDate = utils.formatDate(Date.now(), 'YYYYMMDD')
+            displaySetService.activeDisplaySets = displaySetService.activeDisplaySets.filter(e => {
+              return (e.SeriesDescription != 'SAM2_' + currentDisplaySets.SeriesDescription) || (e.SeriesDate != currentDate);
+            })
+
+            let studyInstanceUID = currentDisplaySets.StudyInstanceUID
+            let studyInstanceUIDs = [studyInstanceUID, 1]
+            let dataSource = extensionManager.getActiveDataSource()[0]
+            let filters = { 'StudyInstanceUIDs': [studyInstanceUID] }
+            let appConfig = config
+            defaultRouteInit({ servicesManager, studyInstanceUIDs, dataSource, filters, appConfig }, "default").then(function (unsub) {
+
+              const displaySets = displaySetService.activeDisplaySets;
+              const currentDisplaySet = displaySets.filter(e => {
+                return (e.SeriesDescription == 'SAM2_' + currentDisplaySets.SeriesDescription) && (e.SeriesDate == currentDate);
+              })[0];
+              let updatedViewports = hangingProtocolService.getViewportsRequireUpdate(activeViewportId, currentDisplaySet.displaySetInstanceUID, true)
+              viewportGridService.setDisplaySetsForViewports(updatedViewports)
+            })
+          }
+          return response;
+        })
+        .catch(function (error) {
+          return error;
+        })
+        .finally(function () { });
+    },
+    saveAndNextObj: () => {
+      servicesManager.services.measurementService.clearMeasurements()
+      servicesManager.services.cornerstoneViewportService.resize()
+      if(useToggleHangingProtocolStore.getState().toggleHangingProtocol.nextObj===undefined){
+        useToggleHangingProtocolStore.getState().toggleHangingProtocol.nextObj=1
+      }
+      useToggleHangingProtocolStore.getState().toggleHangingProtocol.nextObj=useToggleHangingProtocolStore.getState().toggleHangingProtocol.nextObj+1
+    },
+    jumpToSegment: () => {
+      const segmentationService = servicesManager.services.segmentationService;
+      const activeSegmentation = segmentationService.getActiveSegmentation();
+      if (activeSegmentation != undefined) {
+        segmentationService.jumpToSegmentCenter(activeSegmentation.id, 1, 'default')
+      }
+    },
+    toggleCurrentSegment: () => {
+      const segmentationService = servicesManager.services.segmentationService;
+      const activeSegmentation = segmentationService.getActiveSegmentation();
+      if (activeSegmentation != undefined) {
+        segmentationService.toggleSegmentationVisibility(activeSegmentation.id)
+      }
+    },
+
     /**
      * Toggle viewport overlay (the information panel shown on the four corners
      * of the viewport)
@@ -591,6 +848,21 @@ const commandsModule = ({
     },
     openDICOMTagViewer: {
       commandFn: actions.openDICOMTagViewer,
+    },
+    sam2: {
+      commandFn: actions.sam2,
+    },
+    sam2_one: {
+      commandFn: actions.sam2_one,
+    },
+    saveAndNextObj: {
+      commandFn: actions.saveAndNextObj,
+    },
+    jumpToSegment: {
+      commandFn: actions.jumpToSegment,
+    },
+    toggleCurrentSegment: {
+      commandFn: actions.toggleCurrentSegment,
     },
     updateViewportDisplaySet: {
       commandFn: actions.updateViewportDisplaySet,

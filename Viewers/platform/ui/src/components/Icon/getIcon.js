@@ -22,6 +22,8 @@ import { ReactComponent as contentNext } from './../../assets/icons/content-next
 import { ReactComponent as contentPrev } from './../../assets/icons/content-prev.svg';
 import { ReactComponent as eyeVisible } from './../../assets/icons/eye-visible.svg';
 import { ReactComponent as eyeHidden } from './../../assets/icons/eye-hidden.svg';
+import { ReactComponent as samIcon } from './../../assets/icons/tool-sam.svg';
+import { ReactComponent as targetIcon } from './../../assets/icons/tool-target.svg';
 import { ReactComponent as exclamation } from './../../assets/icons/exclamation.svg';
 import { ReactComponent as externalLink } from './../../assets/icons/external-link.svg';
 import { ReactComponent as groupLayers } from './../../assets/icons/group-layers.svg';
@@ -176,6 +178,7 @@ import { ReactComponent as investigationalUse } from './../../assets/icons/illus
 import { ReactComponent as actionNewDialog } from './../../assets/icons/action-new-dialog.svg';
 import { ReactComponent as iconToolCobbAngle } from './../../assets/icons/tool-cobb-angle.svg';
 import { ReactComponent as iconToolWindowRegion } from './../../assets/icons/tool-window-region.svg';
+import { ReactComponent as iconDownload } from './../../assets/icons/icon-download.svg';
 
 import CTAAA from './../../assets/icons/CT-AAA.png';
 import CTAAA2 from './../../assets/icons/CT-AAA2.png';
@@ -325,6 +328,7 @@ const ICONS = {
   'icon-prev-inactive': iconPrevInactive,
   'icon-prev': iconPrev,
   'icon-upload': iconUpload,
+  'icon-download': iconDownload,
   'navigation-panel-right-hide': navigationPanelRightHide,
   'navigation-panel-right-reveal': navigationPanelRightReveal,
   'tab-linear': tabLinear,
@@ -356,6 +360,8 @@ const ICONS = {
   'viewport-status-tracked': viewportStatusTracked,
   'viewport-window-level': viewportWindowLevel,
   'dicom-tag-browser': dicomTagBrowser,
+  'sam-icon': samIcon,
+  'target-icon': targetIcon,
   /** New Tools */
   'icon-tool-freehand-roi': iconToolFreehandRoi,
   'icon-tool-livewire': iconToolLivewire,
