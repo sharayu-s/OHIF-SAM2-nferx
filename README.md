@@ -1,5 +1,7 @@
 # OHIF-SAM2
 
+[Paper](docs/pdfs/OHIF-SAM2-v1.pdf)
+
 ## Prerequisite
 
 - Install Docker, NVIDIA Container Toolkit
@@ -14,19 +16,19 @@
 
 ## Demo Video
 
-[![OHIF-SAM2 Demo](https://img.youtube.com/vi/BS2wCKYh_pk/0.jpg)](https://www.youtube.com/watch?v=BS2wCKYh_pk)
+[![OHIF-SAM2 Demo](https://i9.ytimg.com/vi_webp/KlzAZU5GKug/mq2.webp?sqp=CNC4mboG-oaymwEmCMACELQB8quKqQMa8AEB-AH-CYACpAWKAgwIABABGBcgLyh_MA8=&rs=AOn4CLAB0tqKqKd5-2h4kyvNjhxQh3mzkw)](https://youtu.be/KlzAZU5GKug)
 
 - Prompts (Positive, Negative Points and Bounding Boxes) are supported.
 
 - Two SAM2 buttons are available: SAM2_one (faster) for the slices where prompts are given, SAM2 for all slices via propagation.
 
+- Multiple labels are supported - click nextObj button once it is done with the current label
+
 ## Next steps
 
-- Sync with the recent Cornerstone 2.0 update and OHIF -> Better segmentation experience
+- Sync with the recent Cornerstone 2.0 update and OHIF -> Better segmentation experience (3.9 branch done, testing phase before merge)
 
-- Support multi-labels in segmentation
-
-- Support save renamed and manually edited segmentation
+- Support SAM2 for any label anytime: Currently, if a user pass to the next Obj, the user cannot reuse SAM2 for the old label, only manually edit
 
 ## (potential) FAQ
 
@@ -35,3 +37,13 @@
 
 - Q: `Failed to initialize NVML: Unknown Error` Or `No CUDA available``
 - A: Edit `no-cgroups = false`in `/etc/nvidia-container-runtime/config.toml` [Reference](https://forums.developer.nvidia.com/t/nvida-container-toolkit-failed-to-initialize-nvml-unknown-error/286219/2)
+
+## How to Cite
+
+```bibtex
+@article{jcho2024ohifsam2,
+  title={OHIF-SAM2: Accelerating Radiology Workflows with Segment Anything Model 2},
+  author={Cho, Jaeyoung and Liu, Jingyu and Schlamp, Kai and Rastogi, Aditya and Vollmuth, Philipp},
+  year={2024}
+}
+```
