@@ -16,7 +16,7 @@
 
 ## Demo Video
 
-[![OHIF-SAM2 Demo](https://i9.ytimg.com/vi_webp/KlzAZU5GKug/mq2.webp?sqp=CNC4mboG-oaymwEmCMACELQB8quKqQMa8AEB-AH-CYACpAWKAgwIABABGBcgLyh_MA8=&rs=AOn4CLAB0tqKqKd5-2h4kyvNjhxQh3mzkw)](https://youtu.be/KlzAZU5GKug)
+[![OHIF-SAM2 Demo](https://img.youtube.com/vi/KlzAZU5GKug/0.jpg)](https://youtu.be/KlzAZU5GKug)
 
 - Prompts (Positive, Negative Points and Bounding Boxes) are supported.
 
