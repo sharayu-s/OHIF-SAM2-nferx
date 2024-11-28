@@ -1,4 +1,4 @@
-import { Types } from '@ohif/core';
+import { utils, Types } from '@ohif/core';
 
 import { ContextMenuController, defaultContextMenu } from './CustomizableContextMenu';
 import DicomTagBrowser from './DicomTagBrowser/DicomTagBrowser';
@@ -548,7 +548,8 @@ const commandsModule = ({
             let dataSource = extensionManager.getActiveDataSource()[0]
             let filters = { 'StudyInstanceUIDs': [studyInstanceUID] }
             let appConfig = config
-            let unsubscriptions = defaultRouteInit({ servicesManager, studyInstanceUIDs, dataSource, filters, appConfig }, "default").then(async function (unsub) {
+
+            let unsubscriptions = defaultRouteInit({ servicesManager, studyInstanceUIDs, dataSource, filters, appConfig }, "default", 0).then(async function (unsub) {
               const displaySets = displaySetService.activeDisplaySets;
               const currentDisplaySet = displaySets.filter(e => {
                 return (e.SeriesDescription == 'SAM2_' + currentDisplaySets.SeriesDescription) && (e.SeriesDate == currentDate);

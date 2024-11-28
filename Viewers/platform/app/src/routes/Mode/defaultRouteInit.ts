@@ -30,8 +30,11 @@ export async function defaultRouteInit(
   function applyHangingProtocol() {
     const displaySets = displaySetService.getActiveDisplaySets();
 
-    if (!displaySets || !displaySets.length) {
+    if (studyInstanceUIDs.length < 2 && (!displaySets || !displaySets.length)  ) {
       return;
+    }
+    if (studyInstanceUIDs.length ==2){
+      studyInstanceUIDs.pop()
     }
 
     // Gets the studies list to use
