@@ -44,6 +44,8 @@
 @article{jcho2024ohifsam2,
   title={OHIF-SAM2: Accelerating Radiology Workflows with Segment Anything Model 2},
   author={Cho, Jaeyoung and Liu, Jingyu and Schlamp, Kai and Rastogi, Aditya and Vollmuth, Philipp},
+  journal={TechRxiv preprint techrxiv.173387978.85520380},
+  url={https://www.techrxiv.org/users/868002/articles/1248561-ohif-sam2-accelerating-radiology-workflows-with-segment-anything-model-2},
   year={2024}
 }
 ```
