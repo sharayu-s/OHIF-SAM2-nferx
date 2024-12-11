@@ -1,6 +1,6 @@
 # OHIF-SAM2
 
-[Paper](docs/pdfs/OHIF-SAM2-v1.pdf)
+[Paper](https://www.techrxiv.org/users/868002/articles/1248561-ohif-sam2-accelerating-radiology-workflows-with-segment-anything-model-2)
 
 ## Prerequisite
 
