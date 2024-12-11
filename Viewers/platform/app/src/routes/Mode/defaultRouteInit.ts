@@ -83,6 +83,10 @@ export async function defaultRouteInit(
   log.time(Enums.TimingEnum.STUDY_TO_DISPLAY_SETS);
   log.time(Enums.TimingEnum.STUDY_TO_FIRST_IMAGE);
 
+  if (studyInstanceUIDs.length ==2){
+    studyInstanceUIDs.pop()
+  }
+
   const allRetrieves = studyInstanceUIDs.map(StudyInstanceUID =>
     dataSource.retrieve.series.metadata({
       StudyInstanceUID,

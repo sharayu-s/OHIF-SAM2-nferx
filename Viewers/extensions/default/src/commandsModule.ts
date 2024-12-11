@@ -17,6 +17,7 @@ import { useToggleHangingProtocolStore } from './stores/useToggleHangingProtocol
 import { useViewportsByPositionStore } from './stores/useViewportsByPositionStore';
 import { useToggleOneUpViewportGridStore } from './stores/useToggleOneUpViewportGridStore';
 
+import { Enums as csToolsEnums } from '@cornerstonejs/tools';
 import { defaultRouteInit } from '@routes/Mode/defaultRouteInit'
 import MonaiLabelClient from '../../monai-label/src/services/MonaiLabelClient';
 import axios from 'axios';
@@ -690,16 +691,19 @@ const commandsModule = ({
     },
     jumpToSegment: () => {
       const segmentationService = servicesManager.services.segmentationService;
-      const activeSegmentation = segmentationService.getActiveSegmentation();
+      const activeSegmentation = segmentationService.getActiveSegmentation('default');
       if (activeSegmentation != undefined) {
-        segmentationService.jumpToSegmentCenter(activeSegmentation.id, 1, 'default')
+        segmentationService.jumpToSegmentCenter(activeSegmentation.segmentationId, 1, 'default')
       }
     },
     toggleCurrentSegment: () => {
       const segmentationService = servicesManager.services.segmentationService;
-      const activeSegmentation = segmentationService.getActiveSegmentation();
+      const activeSegmentation = segmentationService.getActiveSegmentation('default');
       if (activeSegmentation != undefined) {
-        segmentationService.toggleSegmentationVisibility(activeSegmentation.id)
+        segmentationService.toggleSegmentationRepresentationVisibility('default', {
+          segmentationId: activeSegmentation.segmentationId,
+          type: csToolsEnums.SegmentationRepresentations.Labelmap
+        });
       }
     },
 

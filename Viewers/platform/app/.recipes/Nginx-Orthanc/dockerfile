@@ -28,6 +28,7 @@ RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/tools/base/An
 #RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/core/dist/esm/utilities/sortImageIdsAndGetSpacing.js
 
 #RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/adapters/dist/adapters.es.js
+RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/adapters/dist/esm/adapters/Cornerstone/Segmentation_4X.js
 
 #RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/utilities/segmentation/createLabelmapVolumeForViewport.js
 #RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/stateManagement/segmentation/polySeg/Labelmap/labelmapComputationStrategies.js
@@ -46,6 +47,7 @@ COPY ./backup/esm/AnnotationTool.js /usr/src/app/node_modules/@cornerstonejs/too
 #COPY ./backup/esm/sortImageIdsAndGetSpacing.js /usr/src/app/node_modules/@cornerstonejs/core/dist/esm/utilities/
 
 #COPY ./backup/adapters/adapters.es.js /usr/src/app/node_modules/@cornerstonejs/adapters/dist/
+COPY ./backup/esm/Segmentation_4X.js /usr/src/app/node_modules/@cornerstonejs/adapters/dist/esm/adapters/Cornerstone/
 
 #COPY ./backup/cornerstone2.0_patch/createLabelmapVolumeForViewport.js /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/utilities/segmentation/
 #COPY ./backup/cornerstone2.0_patch/labelmapComputationStrategies.js /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/stateManagement/segmentation/polySeg/Labelmap/
