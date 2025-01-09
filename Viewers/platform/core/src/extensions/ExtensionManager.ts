@@ -175,7 +175,6 @@ export default class ExtensionManager extends PubSubService {
           servicesManager: _servicesManager,
           commandsManager: _commandsManager,
           hotkeysManager: _hotkeysManager,
-          extensionManager: this,
         });
       }
     });

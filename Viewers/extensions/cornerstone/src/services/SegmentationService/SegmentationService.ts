@@ -7,7 +7,6 @@ import {
   imageLoader,
   Types as csTypes,
   utilities as csUtils,
-  metaData,
 } from '@cornerstonejs/core';
 import {
   Enums as csToolsEnums,
@@ -15,7 +14,6 @@ import {
   Types as cstTypes,
 } from '@cornerstonejs/tools';
 import { PubSubService, Types as OHIFTypes } from '@ohif/core';
-import i18n from '@ohif/i18n';
 import { easeInOutBell, reverseEaseInOutBell } from '../../utils/transitions';
 import { mapROIContoursToRTStructData } from './RTSTRUCT/mapROIContoursToRTStructData';
 import { SegmentationRepresentations } from '@cornerstonejs/tools/enums';
@@ -363,7 +361,7 @@ class SegmentationService extends PubSubService {
             ? options.segments
             : {
                 1: {
-                  label: `${i18n.t('Segment')} 1`,
+                  label: 'Segment 1',
                   active: true,
                 },
               },
@@ -416,10 +414,7 @@ class SegmentationService extends PubSubService {
       imageIds as string[]
     );
 
-    segDisplaySet.images = derivedSegmentationImages.map(image => ({
-      ...image,
-      ...metaData.get('instance', image.referencedImageId),
-    }));
+    segDisplaySet.images = derivedSegmentationImages;
 
     const segmentsInfo = segDisplaySet.segMetadata.data;
 
@@ -446,9 +441,8 @@ class SegmentationService extends PubSubService {
 
       const segmentIndex = Number(SegmentNumber);
 
-      const centroid = segDisplaySet.centroids?.get(index);
-      const imageCentroidXYZ = centroid?.image || { x: 0, y: 0, z: 0 };
-      const worldCentroidXYZ = centroid?.world || { x: 0, y: 0, z: 0 };
+      const imageCentroidXYZ = segDisplaySet.centroids.get(index).image || { x: 0, y: 0, z: 0 };
+      const worldCentroidXYZ = segDisplaySet.centroids.get(index).world || { x: 0, y: 0, z: 0 };
 
       segments[segmentIndex] = {
         segmentIndex,
@@ -484,23 +478,13 @@ class SegmentationService extends PubSubService {
     // We should parse the segmentation as separate slices to support overlapping segments.
     // This parsing should occur in the CornerstoneJS library adapters.
     // For now, we use the volume returned from the library and chop it here.
-    let firstSegmentedSliceImageId = null;
     for (let i = 0; i < derivedSegmentationImages.length; i++) {
       const voxelManager = derivedSegmentationImages[i]
         .voxelManager as csTypes.IVoxelManager<number>;
       const scalarData = voxelManager.getScalarData();
-      const sliceData = volumeScalarData.slice(i * scalarData.length, (i + 1) * scalarData.length);
-      scalarData.set(sliceData);
+      scalarData.set(volumeScalarData.slice(i * scalarData.length, (i + 1) * scalarData.length));
       voxelManager.setScalarData(scalarData);
-
-      // Check if this slice has any non-zero voxels and we haven't found one yet
-      if (!firstSegmentedSliceImageId && sliceData.some(value => value !== 0)) {
-        firstSegmentedSliceImageId = derivedSegmentationImages[i].referencedImageId;
-      }
     }
-
-    // assign the first non zero voxel image id to the segDisplaySet
-    segDisplaySet.firstSegmentedSliceImageId = firstSegmentedSliceImageId;
 
     this._broadcastEvent(EVENTS.SEGMENTATION_LOADING_COMPLETE, {
       segmentationId,
@@ -558,19 +542,7 @@ class SegmentationService extends PubSubService {
     }
 
     const rtDisplaySetUID = rtDisplaySet.displaySetInstanceUID;
-    const referencedDisplaySet = this.servicesManager.services.displaySetService.getDisplaySetByUID(
-      rtDisplaySet.referencedDisplaySetInstanceUID
-    );
 
-    const referencedImageIdsWithGeometry = Array.from(structureSet.ReferencedSOPInstanceUIDsSet);
-
-    const referencedImageIds = referencedDisplaySet.instances.map(image => image.imageId);
-    // find the first image id that contains a referenced SOP instance UID
-    const firstSegmentedSliceImageId = referencedImageIds.find(imageId =>
-      referencedImageIdsWithGeometry.some(referencedId => imageId.includes(referencedId))
-    );
-
-    rtDisplaySet.firstSegmentedSliceImageId = firstSegmentedSliceImageId;
     // Map ROI contours to RT Struct Data
     const allRTStructData = mapROIContoursToRTStructData(structureSet, rtDisplaySetUID);
 
@@ -800,7 +772,7 @@ class SegmentationService extends PubSubService {
     } = {}
   ): void {
     if (config?.segmentIndex === 0) {
-      throw new Error(i18n.t('Segment') + ' index 0 is reserved for "no label"');
+      throw new Error('Segment index 0 is reserved for "no label"');
     }
 
     const csSegmentation = this.getCornerstoneSegmentation(segmentationId);
@@ -814,7 +786,7 @@ class SegmentationService extends PubSubService {
 
     // update the segmentation
     if (!config.label) {
-      config.label = `${i18n.t('Segment')} ${segmentIndex}`;
+      config.label = `Segment ${segmentIndex}`;
     }
 
     const currentSegments = csSegmentation.segments;

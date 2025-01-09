@@ -1,8 +1,7 @@
 import React, { ReactElement, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
-import { AllInOneMenu } from '@ohif/ui';
-import { useViewportGrid } from '@ohif/ui-next';
+import { AllInOneMenu, useViewportGrid } from '@ohif/ui';
 import { Colormap } from './Colormap';
 import { Colorbar } from './Colorbar';
 import { setViewportColorbar } from './Colorbar';

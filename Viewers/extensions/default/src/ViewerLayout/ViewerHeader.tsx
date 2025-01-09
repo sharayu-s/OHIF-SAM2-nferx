@@ -10,7 +10,6 @@ import { hotkeys } from '@ohif/core';
 import { Toolbar } from '../Toolbar/Toolbar';
 import HeaderPatientInfo from './HeaderPatientInfo';
 import { PatientInfoVisibility } from './HeaderPatientInfo/HeaderPatientInfo';
-import { preserveQueryParameters, publicUrl } from '@ohif/app';
 
 const { availableLanguages, defaultLanguage, currentLanguage } = i18n;
 
@@ -42,7 +41,7 @@ function ViewerHeader({
     }
 
     navigate({
-      pathname: publicUrl,
+      pathname: '/',
       search: decodeURIComponent(searchQuery.toString()),
     });
   };

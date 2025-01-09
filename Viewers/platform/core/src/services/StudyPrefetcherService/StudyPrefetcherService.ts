@@ -679,7 +679,7 @@ class StudyPrefetcherService extends PubSubService {
     this._displaySetLoadingStates.clear();
     this._imageIdsToDisplaySetsMap.clear();
     this._inflightRequests.clear();
-    this.imageLoadPoolManager.clearRequestStack(this.requestType);
+    this.imageLoadPoolManager.clearRequestStack(IMAGE_REQUEST_TYPE);
 
     this._broadcastEvent(this.EVENTS.SERVICE_STOPPED, {});
   }

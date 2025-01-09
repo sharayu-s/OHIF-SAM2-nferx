@@ -19,6 +19,7 @@ import {
   ModalProvider,
   ThemeWrapper,
   ViewportDialogProvider,
+  ViewportGridProvider,
   CineProvider,
   UserAuthenticationProvider,
   ToolboxProvider,
@@ -26,7 +27,6 @@ import {
 import {
   ThemeWrapper as ThemeWrapperNext,
   NotificationProvider,
-  ViewportGridProvider,
   TooltipProvider,
 } from '@ohif/ui-next';
 // Viewer Project

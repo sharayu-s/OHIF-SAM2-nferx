@@ -8,6 +8,7 @@ import toNumber from '../utils/toNumber';
 import combineFrameInstance from '../utils/combineFrameInstance';
 
 class MetadataProvider {
+  private readonly studies: Map<string, any> = new Map();
   private readonly imageURIToUIDs: Map<string, any> = new Map();
   private readonly imageUIDsByImageId: Map<string, any> = new Map();
   // Can be used to store custom metadata for a specific type.
@@ -16,10 +17,6 @@ class MetadataProvider {
   private readonly customMetadata: Map<string, any> = new Map();
 
   addImageIdToUIDs(imageId, uids) {
-    if (!imageId) {
-      throw new Error('MetadataProvider::Empty imageId');
-    }
-
     // This method is a fallback for when you don't have WADO-URI or WADO-RS.
     // You can add instances fetched by any method by calling addInstance, and hook an imageId to point at it here.
     // An example would be dicom hosted at some random site.
@@ -38,10 +35,6 @@ class MetadataProvider {
   }
 
   _getInstance(imageId) {
-    if (!imageId) {
-      throw new Error('MetadataProvider::Empty imageId');
-    }
-
     const uids = this.getUIDsFromImageID(imageId);
 
     if (!uids) {
@@ -200,7 +193,7 @@ class MetadataProvider {
         break;
       case WADO_IMAGE_LOADER_TAGS.VOI_LUT_MODULE:
         const { WindowCenter, WindowWidth, VOILUTFunction } = instance;
-        if (WindowCenter == null || WindowWidth == null) {
+        if (WindowCenter === undefined || WindowWidth === undefined) {
           return;
         }
         const windowCenter = Array.isArray(WindowCenter) ? WindowCenter : [WindowCenter];
@@ -462,6 +455,17 @@ class MetadataProvider {
   }
 
   getUIDsFromImageID(imageId) {
+    if (!imageId) {
+      throw new Error('MetadataProvider::Empty imageId');
+    }
+    // TODO: adding csiv here is not really correct. Probably need to use
+    // metadataProvider.addImageIdToUIDs(imageId, {
+    //   StudyInstanceUID,
+    //   SeriesInstanceUID,
+    //   SOPInstanceUID,
+    // })
+    // somewhere else
+
     const cachedUIDs = this.imageUIDsByImageId.get(imageId);
     if (cachedUIDs) {
       return cachedUIDs;

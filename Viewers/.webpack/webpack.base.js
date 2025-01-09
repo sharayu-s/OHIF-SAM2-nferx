@@ -57,6 +57,10 @@ if (!process.env.APP_CONFIG) {
 }
 
 module.exports = (env, argv, { SRC_DIR, ENTRY }) => {
+  if (!process.env.NODE_ENV) {
+    throw new Error('process.env.NODE_ENV not set');
+  }
+
   const mode = NODE_ENV === 'production' ? 'production' : 'development';
   const isProdBuild = NODE_ENV === 'production';
   const isQuickBuild = QUICK_BUILD === 'true';
@@ -104,7 +108,7 @@ module.exports = (env, argv, { SRC_DIR, ENTRY }) => {
                 exclude: /node_modules/,
                 loader: 'babel-loader',
                 options: {
-                  plugins: isProdBuild ? [] : ['react-refresh/babel'],
+                  plugins: ['react-refresh/babel'],
                 },
               },
             ]),

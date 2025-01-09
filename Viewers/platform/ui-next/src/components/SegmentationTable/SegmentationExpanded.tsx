@@ -26,7 +26,10 @@ export const SegmentationExpanded: React.FC<{ children?: React.ReactNode }> = ({
                 representation: segmentationInfo.representation,
               })
             ) : (
-              <SegmentationHeader segmentation={segmentationInfo.segmentation} />
+              <SegmentationHeader
+                segmentation={segmentationInfo.segmentation}
+                representation={segmentationInfo.representation}
+              />
             )}
           </PanelSection.Header>
           <PanelSection.Content>
@@ -35,6 +38,7 @@ export const SegmentationExpanded: React.FC<{ children?: React.ReactNode }> = ({
                 React.isValidElement(child)
                   ? React.cloneElement(child, {
                       segmentation: segmentationInfo.segmentation,
+                      representation: segmentationInfo.representation,
                     })
                   : child
               )}

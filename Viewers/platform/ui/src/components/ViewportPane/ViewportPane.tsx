@@ -58,9 +58,7 @@ function ViewportPane({
       // onInteractionHandler...
       // https://reactjs.org/docs/events.html#mouse-events
       // https://stackoverflow.com/questions/8378243/catch-scrolling-event-on-overflowhidden-element
-      // Use onPointerDown so that for the config property activateViewportBeforeInteraction===false,
-      // a touch drag will activate the viewport as well as apply the tool selected.
-      onPointerDown={onInteractionHandler}
+      onMouseDown={onInteractionHandler}
       onDoubleClick={onDoubleClick}
       onClick={onInteractionHandler}
       onScroll={onInteractionHandler}

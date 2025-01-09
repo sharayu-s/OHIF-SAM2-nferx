@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icons } from '@ohif/ui-next';
+import { Icon } from '@ohif/ui';
 
 // this is a debug component that is used to list various things that might
 // be useful for debugging such as cross origin errors, etc.
@@ -18,7 +18,7 @@ function Debug() {
               <p className="text-primary-active mt-4 text-xl font-semibold">Debug Information</p>
               <div className="mt-4 flex items-center space-x-2">
                 <p className="text-md text-white">Cross Origin Isolated (COOP/COEP)</p>
-                <Icons.ByName
+                <Icon
                   name={
                     window.crossOriginIsolated ? 'notifications-success' : 'notifications-error'
                   }

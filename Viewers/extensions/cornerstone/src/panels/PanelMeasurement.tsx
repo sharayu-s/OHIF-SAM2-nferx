@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { useViewportGrid } from '@ohif/ui-next';
+import { useViewportGrid } from '@ohif/ui';
 import { MeasurementTable } from '@ohif/ui-next';
 import debounce from 'lodash.debounce';
 import { useMeasurements } from '../hooks/useMeasurements';

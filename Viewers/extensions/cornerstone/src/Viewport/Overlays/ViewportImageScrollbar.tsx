@@ -44,17 +44,13 @@ function CornerstoneImageScrollbar({
       return;
     }
 
-    try {
-      const imageIndex = viewport.getCurrentImageIdIndex();
-      const numberOfSlices = viewport.getNumberOfSlices();
+    const imageIndex = viewport.getCurrentImageIdIndex();
+    const numberOfSlices = viewport.getNumberOfSlices();
 
-      setImageSliceData({
-        imageIndex: imageIndex,
-        numberOfSlices,
-      });
-    } catch (error) {
-      console.warn(error);
-    }
+    setImageSliceData({
+      imageIndex: imageIndex,
+      numberOfSlices,
+    });
   }, [viewportId, viewportData]);
 
   useEffect(() => {

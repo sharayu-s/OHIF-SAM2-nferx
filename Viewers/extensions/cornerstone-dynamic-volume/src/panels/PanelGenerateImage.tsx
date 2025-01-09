@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useCine } from '@ohif/ui';
-import { useViewportGrid } from '@ohif/ui-next';
+import { useCine, useViewportGrid } from '@ohif/ui';
 import { utilities as csUtils, volumeLoader, eventTarget, Enums, cache } from '@cornerstonejs/core';
 import { utilities as cstUtils } from '@cornerstonejs/tools';
 import DynamicVolumeControls from './DynamicVolumeControls';

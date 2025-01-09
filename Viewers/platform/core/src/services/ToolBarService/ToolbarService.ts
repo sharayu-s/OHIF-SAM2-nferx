@@ -128,11 +128,10 @@ export default class ToolbarService extends PubSubService {
   /**
    * Adds buttons to the toolbar.
    * @param buttons - The buttons to be added.
-   * @param replace - Flag indicating if any existing button with the same id as one being added should be replaced
    */
-  public addButtons(buttons: Button[], replace: boolean = false): void {
+  public addButtons(buttons: Button[]): void {
     buttons.forEach(button => {
-      if (replace || !this.state.buttons[button.id]) {
+      if (!this.state.buttons[button.id]) {
         if (!button.props) {
           button.props = {};
         }
@@ -384,17 +383,12 @@ export default class ToolbarService extends PubSubService {
 
   /**
    * Creates a button section with the specified key and buttons.
-   * Buttons already in the section (i.e. with the same ids) will NOT be added twice.
    * @param {string} key - The key of the button section.
    * @param {Array} buttons - The buttons to be added to the section.
    */
   createButtonSection(key, buttons) {
     if (this.state.buttonSections[key]) {
-      this.state.buttonSections[key].push(
-        ...buttons.filter(
-          button => !this.state.buttonSections[key].find(sectionButton => sectionButton === button)
-        )
-      );
+      this.state.buttonSections[key].push(...buttons);
     } else {
       this.state.buttonSections[key] = buttons;
     }
@@ -458,7 +452,7 @@ export default class ToolbarService extends PubSubService {
 
     const buttonType = buttonTypes[uiType];
 
-    if (!buttonType && !component) {
+    if (!buttonType) {
       return;
     }
 

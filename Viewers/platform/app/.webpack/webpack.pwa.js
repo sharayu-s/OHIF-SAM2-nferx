@@ -133,6 +133,8 @@ module.exports = (env, argv) => {
       new InjectManifest({
         swDest: 'sw.js',
         swSrc: path.join(SRC_DIR, 'service-worker.js'),
+        // Increase the limit to 4mb:
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // Need to exclude the theme as it is updated independently
         exclude: [/theme/],
         // Cache large files for the manifests to avoid warning messages
@@ -172,6 +174,10 @@ module.exports = (env, argv) => {
         disableDotRule: true,
         index: PUBLIC_URL + 'index.html',
       },
+      headers: {
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+      },
       devMiddleware: {
         writeToDisk: true,
       },
@@ -199,10 +205,6 @@ module.exports = (env, argv) => {
       })
     );
   }
-
-  mergedConfig.watchOptions = {
-    ignored: /node_modules\/@cornerstonejs/,
-  };
 
   return mergedConfig;
 };

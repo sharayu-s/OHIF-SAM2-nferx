@@ -1,6 +1,16 @@
-import React, { useState } from 'react';
-import { Button, PanelSection, ButtonGroup, IconButton, InputNumber } from '@ohif/ui';
-import { DoubleSlider, Icons, Tooltip, TooltipTrigger, TooltipContent } from '@ohif/ui-next';
+import React, { useEffect, useState } from 'react';
+import {
+  Button,
+  PanelSection,
+  ButtonGroup,
+  IconButton,
+  InputNumber,
+  Icon,
+  Tooltip,
+} from '@ohif/ui';
+
+import { DoubleSlider } from '@ohif/ui-next';
+
 import { Enums } from '@cornerstonejs/core';
 
 const controlClassNames = {
@@ -11,18 +21,16 @@ const controlClassNames = {
 
 const Header = ({ title, tooltip }) => (
   <div className="flex items-center space-x-1">
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span>
-          <Icons.ByName
-            name="info-link"
-            className="text-primary-active h-[14px] w-[14px]"
-          />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent sideOffset={4} className="max-w-xs p-2 bg-primary-dark text-white">
-        <div>{tooltip}</div>
-      </TooltipContent>
+    <Tooltip
+      content={<div className="text-white">{tooltip}</div>}
+      position="bottom-left"
+      tight={true}
+      tooltipBoxClassName="max-w-xs p-2"
+    >
+      <Icon
+        name="info-link"
+        className="text-primary-active h-[14px] w-[14px]"
+      />
     </Tooltip>
     <span className="text-aqua-pale text-[11px] uppercase">{title}</span>
   </div>
@@ -45,7 +53,9 @@ const DynamicVolumeControls = ({
   onDynamicClick,
 }) => {
   const [computedView, setComputedView] = useState(false);
+
   const [computeViewMode, setComputeViewMode] = useState(Enums.DynamicOperatorType.SUM);
+
   const [sliderRangeValues, setSliderRangeValues] = useState([0, framesLength - 1]);
 
   const handleSliderChange = newValues => {
@@ -111,14 +121,15 @@ const DynamicVolumeControls = ({
               <div>
                 Operation Buttons (SUM, AVERAGE, SUBTRACT): Select the mathematical operation to be
                 applied to the data set.
-                <br /> Range Slider: Choose the numeric range within which the operation will be
+                <br></br> Range Slider: Choose the numeric range within which the operation will be
                 performed.
-                <br />Generate Button: Execute the chosen operation on the specified range of data.
+                <br></br>Generate Button: Execute the chosen operation on the specified range of
+                data.{' '}
               </div>
             }
           />
           <ButtonGroup
-            className="mt-2 w-full"
+            className={`mt-2 w-full`}
             separated={true}
           >
             <button
@@ -187,8 +198,8 @@ function FrameControls({
         title="4D Controls"
         tooltip={
           <div>
-            Play/Pause Button: Begin or pause the animation of the 4D visualization. <br /> Frame
-            Selector: Navigate through individual frames of the 4D data. <br /> FPS (Frames Per
+            Play/Pause Button: Begin or pause the animation of the 4D visualization. <br></br> Frame
+            Selector: Navigate through individual frames of the 4D data. <br></br> FPS (Frames Per
             Second) Selector: Adjust the playback speed of the animation.
           </div>
         }
@@ -198,7 +209,7 @@ function FrameControls({
           className="bg-customblue-30 h-[26px] w-[58px] rounded-[4px]"
           onClick={() => onPlayPauseChange(!isPlaying)}
         >
-          <Icons.ByName
+          <Icon
             name={getPlayPauseIconName()}
             className="active:text-primary-light hover:bg-customblue-300 h-[24px] w-[24px] cursor-pointer text-white"
           />

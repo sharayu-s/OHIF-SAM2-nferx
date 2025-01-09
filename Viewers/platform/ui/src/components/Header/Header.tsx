@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 
 import NavBar from '../NavBar';
+import Svg from '../Svg';
+import Icon from '../Icon';
 import IconButton from '../IconButton';
 import Dropdown from '../Dropdown';
 import HeaderPatientInfo from '../HeaderPatientInfo';
 import { PatientInfoVisibility } from '../../types/PatientInfoVisibility';
-import { Icons } from '@ohif/ui-next';
+
 function Header({
   children,
   menuOptions,
@@ -37,7 +39,7 @@ function Header({
       isSticky={isSticky}
       {...props}
     >
-      <div className="relative h-[48px] items-center">
+      <div className="relative h-[48px] items-center ">
         <div className="absolute left-0 top-1/2 flex -translate-y-1/2 items-center">
           <div
             className={classNames(
@@ -47,13 +49,18 @@ function Header({
             onClick={onClickReturn}
             data-cy="return-to-work-list"
           >
-            {isReturnEnabled && <Icons.ChevronClosed className="text-primary-active w-8" />}
+            {isReturnEnabled && (
+              <Icon
+                name="chevron-left"
+                className="text-primary-active w-8"
+              />
+            )}
             <div className="ml-1">
-              {WhiteLabeling?.createLogoComponentFn?.(React, props) || <Icons.OHIFLogo />}
+              {WhiteLabeling?.createLogoComponentFn?.(React, props) || <Svg name="logo-ohif" />}
             </div>
           </div>
         </div>
-        <div className="absolute top-1/2 left-[250px] h-8 -translate-y-1/2">{Secondary}</div>
+        <div className="absolute top-1/2 left-[250px]  h-8 -translate-y-1/2">{Secondary}</div>
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform">
           <div className="flex items-center justify-center space-x-2">{children}</div>
         </div>
@@ -79,7 +86,7 @@ function Header({
                 size="initial"
                 className="text-primary-active hover:bg-primary-dark h-full w-full"
               >
-                <Icons.ByName name="icon-settings" />
+                <Icon name="icon-settings" />
               </IconButton>
             </Dropdown>
           </div>

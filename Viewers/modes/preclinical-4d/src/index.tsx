@@ -84,7 +84,7 @@ function modeFactory({ modeConfiguration }) {
             lesionStats: 'Lesion Statistics',
             minValue: 'Minimum Value',
             maxValue: 'Maximum Value',
-            meanValue: 'Mean Value (ml)',
+            meanValue: 'Mean Value',
             volume: 'Volume',
             suvPeak: 'SUV Peak',
             suvMax: 'Maximum SUV',

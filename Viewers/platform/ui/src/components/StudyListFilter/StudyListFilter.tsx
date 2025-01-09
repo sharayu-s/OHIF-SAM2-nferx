@@ -3,9 +3,9 @@ import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 
 import LegacyButton from '../LegacyButton';
+import Icon from '../Icon';
 import Typography from '../Typography';
 import InputGroup from '../InputGroup';
-import { Icons } from '@ohif/ui-next';
 
 const StudyListFilter = ({
   filtersMeta,
@@ -47,7 +47,7 @@ const StudyListFilter = ({
                     className="text-primary-active flex cursor-pointer items-center gap-2 self-center text-lg font-semibold"
                     onClick={onUploadClick}
                   >
-                    <Icons.Upload />
+                    <Icon name="icon-upload"></Icon>
                     <span>{t('Upload')}</span>
                   </div>
                 )}
@@ -61,7 +61,7 @@ const StudyListFilter = ({
                     color="primaryActive"
                     border="primaryActive"
                     className="mx-8"
-                    startIcon={<Icons.Cancel />}
+                    startIcon={<Icon name="cancel" />}
                     onClick={clearFilters}
                   >
                     {t('ClearFilters')}

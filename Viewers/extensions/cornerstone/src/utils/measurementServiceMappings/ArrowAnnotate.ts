@@ -57,7 +57,6 @@ const Length = {
     const mappedAnnotations = getMappedAnnotations(annotation, displaySetService);
 
     const displayText = getDisplayText(mappedAnnotations, displaySet);
-    const getReport = () => _getReport(mappedAnnotations, points, FrameOfReferenceUID);
 
     return {
       uid: annotationUID,
@@ -78,7 +77,9 @@ const Length = {
       displayText: displayText,
       data: data.cachedStats,
       type: getValueTypeFromToolType(toolName),
-      getReport,
+      getReport: () => {
+        throw new Error('Not implemented');
+      },
     };
   },
 };
@@ -144,32 +145,4 @@ function getDisplayText(mappedAnnotations, displaySet) {
   return displayText;
 }
 
-function _getReport(mappedAnnotations, points, FrameOfReferenceUID) {
-  const columns = [];
-  const values = [];
-
-  columns.push('AnnotationType');
-  values.push('Cornerstone:ArrowAnnote');
-
-  mappedAnnotations.forEach(annotation => {
-    const { text } = annotation;
-    columns.push(`Text`);
-    values.push(text);
-  });
-
-  if (FrameOfReferenceUID) {
-    columns.push('FrameOfReferenceUID');
-    values.push(FrameOfReferenceUID);
-  }
-
-  if (points) {
-    columns.push('points');
-    values.push(points.map(p => p.join(' ')).join(';'));
-  }
-
-  return {
-    columns,
-    values,
-  };
-}
 export default Length;

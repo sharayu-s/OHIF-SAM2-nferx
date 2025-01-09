@@ -214,9 +214,8 @@
       function browserImportFunction(moduleId) {
         return import(moduleId);
       }
-
-      window.PUBLIC_URL = '<%= PUBLIC_URL %>';
     </script>
+
 
     <!-- EXTENSIONS -->
     <!-- <script type="text/javascript" src="path/to/some-extension.js"></script>
@@ -237,6 +236,7 @@
   <body>
     <noscript> You need to enable JavaScript to run this app. </noscript>
     <div id="react-portal"></div>
-    <div id="root"></div>
+    <div id="root">
+    </div>
   </body>
 </html>
