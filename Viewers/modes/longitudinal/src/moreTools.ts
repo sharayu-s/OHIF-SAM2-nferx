@@ -148,6 +148,14 @@ const moreTools = [
           ],
         }),
         createButton({
+          id: 'Probe',
+          icon: 'tool-probe',
+          label: 'Probe',
+          tooltip: 'Probe',
+          commands: setToolActiveToolbar,
+          evaluate: 'evaluate.cornerstoneTool',
+        }),
+        createButton({
           id: 'Cine',
           icon: 'tool-cine',
           label: 'Cine',

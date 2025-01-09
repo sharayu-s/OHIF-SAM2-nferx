@@ -41,10 +41,9 @@ export function retrieveStudyMetadata(
   const promiseId = `${dicomWebConfig.name}:${StudyInstanceUID}`;
 
   // Already waiting on result? Return cached promise
-  // Should refetch to sync with PACS
-  //if (StudyMetaDataPromises.has(promiseId)) {
-  //  return StudyMetaDataPromises.get(promiseId);
-  //}
+  if (StudyMetaDataPromises.has(promiseId)) {
+    return StudyMetaDataPromises.get(promiseId);
+  }
 
   let promise;
 

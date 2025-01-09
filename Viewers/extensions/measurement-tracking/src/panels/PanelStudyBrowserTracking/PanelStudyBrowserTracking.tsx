@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import PropTypes from 'prop-types';
 import { utils } from '@ohif/core';
-import { useImageViewer, useViewportGrid, Dialog, ButtonEnums } from '@ohif/ui';
+import { useImageViewer, Dialog, ButtonEnums } from '@ohif/ui';
+import { useViewportGrid } from '@ohif/ui-next';
 import { StudyBrowser } from '@ohif/ui-next';
 
 import { useTrackedMeasurements } from '../../getContextModule';
 import { Separator } from '@ohif/ui-next';
 import { PanelStudyBrowserHeader } from '@ohif/extension-default';
+import { useAppConfig } from '@state';
 import { defaultActionIcons, defaultViewPresets } from './constants';
 
 const { formatDate, createStudyBrowserTabs } = utils;
@@ -27,7 +29,7 @@ const thumbnailNoImageModalities = [
  *
  * @param {*} param0
  */
-function PanelStudyBrowserTracking({
+export default function PanelStudyBrowserTracking({
   servicesManager,
   getImageSrc,
   getStudiesForPatientByMRN,
@@ -45,6 +47,10 @@ function PanelStudyBrowserTracking({
     customizationService,
   } = servicesManager.services;
   const navigate = useNavigate();
+  const { mode: studyMode } = customizationService.getCustomization('PanelStudyBrowser.studyMode', {
+    id: 'default',
+    mode: 'all',
+  });
 
   const { t } = useTranslation('Common');
 
@@ -55,7 +61,8 @@ function PanelStudyBrowserTracking({
   const [{ activeViewportId, viewports, isHangingProtocolLayout }, viewportGridService] =
     useViewportGrid();
   const [trackedMeasurements, sendTrackedMeasurementsEvent] = useTrackedMeasurements();
-  const [activeTabName, setActiveTabName] = useState('all');
+
+  const [activeTabName, setActiveTabName] = useState(studyMode);
   const [expandedStudyInstanceUIDs, setExpandedStudyInstanceUIDs] = useState([
     ...StudyInstanceUIDs,
   ]);
@@ -116,6 +123,10 @@ function PanelStudyBrowserTracking({
     viewports.get(activeViewportId)?.displaySetInstanceUIDs;
 
   const { trackedSeries } = trackedMeasurements.context;
+
+  useEffect(() => {
+    setActiveTabName(studyMode);
+  }, [studyMode]);
 
   // ~~ studyDisplayList
   useEffect(() => {
@@ -527,8 +538,6 @@ PanelStudyBrowserTracking.propTypes = {
   getStudiesForPatientByMRN: PropTypes.func.isRequired,
   requestDisplaySetCreationForStudy: PropTypes.func.isRequired,
 };
-
-export default PanelStudyBrowserTracking;
 
 function getImageIdForThumbnail(displaySet: any, imageIds: any) {
   let imageId;
