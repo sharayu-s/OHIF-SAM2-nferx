@@ -30,11 +30,8 @@ export async function defaultRouteInit(
   function applyHangingProtocol() {
     const displaySets = displaySetService.getActiveDisplaySets();
 
-    if (studyInstanceUIDs.length < 2 && (!displaySets || !displaySets.length)  ) {
+    if (!displaySets || !displaySets.length) {
       return;
-    }
-    if (studyInstanceUIDs.length ==2){
-      studyInstanceUIDs.pop()
     }
 
     // Gets the studies list to use
@@ -74,7 +71,7 @@ export async function defaultRouteInit(
         });
       }
 
-      displaySetService.makeDisplaySets(seriesMetadata.instances, madeInClient);
+      displaySetService.makeDisplaySets(seriesMetadata.instances, { madeInClient });
     }
   );
 
@@ -82,10 +79,6 @@ export async function defaultRouteInit(
 
   log.time(Enums.TimingEnum.STUDY_TO_DISPLAY_SETS);
   log.time(Enums.TimingEnum.STUDY_TO_FIRST_IMAGE);
-
-  if (studyInstanceUIDs.length ==2){
-    studyInstanceUIDs.pop()
-  }
 
   const allRetrieves = studyInstanceUIDs.map(StudyInstanceUID =>
     dataSource.retrieve.series.metadata({
