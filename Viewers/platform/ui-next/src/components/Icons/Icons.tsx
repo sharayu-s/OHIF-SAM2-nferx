@@ -60,6 +60,8 @@ import TabSegmentation from './Sources/TabSegmentation';
 import TabStudies from './Sources/TabStudies';
 import ThumbnailView from './Sources/ThumbnailView';
 import Trash from './Sources/Trash';
+import ToolSam from './Sources/ToolSam';
+import ToolTarget from './Sources/ToolTarget';
 import ViewportViews from './Sources/ViewportViews';
 import Sorting from './Sources/Sorting';
 import Upload from './Sources/Upload';
@@ -69,6 +71,7 @@ import GroupLayers from './Sources/GroupLayers';
 import Database from './Sources/Database';
 import InvestigationalUse from './Sources/InvestigationalUse';
 import IconTransferring from './Sources/IconTransferring';
+import IconDownload from './Sources/IconDownload';
 import Alert from './Sources/Alert';
 import AlertOutline from './Sources/AlertOutline';
 import Clipboard from './Sources/Clipboard';
@@ -411,6 +414,8 @@ export const Icons = {
   ToolWindowLevel,
   ToolWindowRegion,
   ToolZoom,
+  ToolSam,
+  ToolTarget,
   LaunchArrow,
   LaunchInfo,
   Upload,
@@ -437,6 +442,7 @@ export const Icons = {
   GearSettings,
   Hide,
   IconMPR,
+  IconDownload,
   Info,
   InfoLink,
   InfoSeries,
@@ -587,6 +593,7 @@ export const Icons = {
   'tab-patient-info': (props: IconProps) => TabPatientInfo(props),
   'tab-roi-threshold': (props: IconProps) => TabRoiThreshold(props),
   'icon-mpr': (props: IconProps) => IconMPR(props),
+  'icon-download': (props: IconProps) => IconDownload(props),
   'power-off': (props: IconProps) => PowerOff(props),
   'icon-multiple-patients': (props: IconProps) => MultiplePatients(props),
   'icon-patient': (props: IconProps) => Patient(props),
@@ -604,6 +611,9 @@ export const Icons = {
   'tool-create-threshold': (props: IconProps) => ToolCreateThreshold(props),
   'tool-crosshair': (props: IconProps) => ToolCrosshair(props),
   'dicom-tag-browser': (props: IconProps) => ToolDicomTagBrowser(props),
+  'sam-icon': (props: IconProps) => ToolSam(props),
+  'target-icon': (props: IconProps) => ToolTarget(props),
+  'eye-visible': (props: IconProps) => EyeVisible(props),
   'tool-flip-horizontal': (props: IconProps) => ToolFlipHorizontal(props),
   'tool-freehand-polygon': (props: IconProps) => ToolFreehandPolygon(props),
   'tool-freehand-roi': (props: IconProps) => ToolFreehandRoi(props),

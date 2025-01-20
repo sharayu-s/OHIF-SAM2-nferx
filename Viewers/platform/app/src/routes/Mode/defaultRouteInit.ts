@@ -30,8 +30,12 @@ export async function defaultRouteInit(
   function applyHangingProtocol() {
     const displaySets = displaySetService.getActiveDisplaySets();
 
-    if (!displaySets || !displaySets.length) {
+    if (studyInstanceUIDs.length < 2 && (!displaySets || !displaySets.length) ) {
       return;
+    }
+
+    if (studyInstanceUIDs.length ==2){
+      studyInstanceUIDs.pop()
     }
 
     // Gets the studies list to use
@@ -79,6 +83,11 @@ export async function defaultRouteInit(
 
   log.time(Enums.TimingEnum.STUDY_TO_DISPLAY_SETS);
   log.time(Enums.TimingEnum.STUDY_TO_FIRST_IMAGE);
+
+  if (studyInstanceUIDs.length ==2){
+    studyInstanceUIDs.pop()
+  }
+
 
   const allRetrieves = studyInstanceUIDs.map(StudyInstanceUID =>
     dataSource.retrieve.series.metadata({
