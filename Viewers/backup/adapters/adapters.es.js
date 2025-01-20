@@ -2821,6 +2821,10 @@ function findReferenceSourceImageId$1(multiframe, frameSegment, imageIds, metada
     var ReferencedSeriesInstanceUID = referencedSeriesSequence.SeriesInstanceUID;
     imageId = getImageIdOfSourceImagebyGeometry$1(ReferencedSeriesInstanceUID, FrameOfReferenceUID, PerFrameFunctionalGroup, imageIds, metadataProvider, tolerance);
   }
+  if (imageId === undefined) {
+
+  }
+
   return imageId;
 }
 
@@ -3213,9 +3217,9 @@ function getImageIdOfSourceImagebyGeometry$1(ReferencedSeriesInstanceUID, FrameO
     if (sourceImageMetadata === undefined || sourceImageMetadata.ImagePositionPatient === undefined || sourceImageMetadata.SeriesInstanceUID !== ReferencedSeriesInstanceUID) {
       continue;
     }
-    //if (compareArrays(PerFrameFunctionalGroup.PlanePositionSequence[0].ImagePositionPatient, sourceImageMetadata.ImagePositionPatient, 10)) { //tolerance
-    //  return imageIds[imageIdsIndexc];
-    //}
+    if (compareArrays(PerFrameFunctionalGroup.PlanePositionSequence[0].ImagePositionPatient, sourceImageMetadata.ImagePositionPatient, tolerance)) { //tolerance
+      return imageIds[imageIdsIndexc];
+    }
     if (PerFrameFunctionalGroup.FrameContentSequence[0]
       .DimensionIndexValues[1]=== sourceImageMetadata.InstanceNumber) { //tolerance
       return imageIds[imageIdsIndexc];
@@ -3847,10 +3851,10 @@ function getImageIdOfSourceImagebyGeometry(ReferencedSeriesInstanceUID, FrameOfR
                 ReferencedSeriesInstanceUID) {
             continue;
         }
-        //if (compareArrays(PerFrameFunctionalGroup.PlanePositionSequence[0]
-        //    .ImagePositionPatient, sourceImageMetadata.ImagePositionPatient, 10)) { //tolerance
-        //    return imageIds[imageIdsIndex];
-        //}
+        if (compareArrays(PerFrameFunctionalGroup.PlanePositionSequence[0]
+            .ImagePositionPatient, sourceImageMetadata.ImagePositionPatient, tolerance)) { //tolerance
+            return imageIds[imageIdsIndex];
+        }
         if (PerFrameFunctionalGroup.FrameContentSequence[0]
               .DimensionIndexValues[1]=== sourceImageMetadata.InstanceNumber) { //tolerance
               return imageIds[imageIdsIndex];

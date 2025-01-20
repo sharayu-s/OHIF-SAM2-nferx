@@ -356,7 +356,26 @@ class BasicInferTask(InferTask):
                 ann_frame_list = np.unique(np.concatenate((ann_frame_list, ann_frame_list_box)))
 
             for i in range(len(ann_frame_list)):
-                ann_frame_idx = len_z-1-ann_frame_list[i]
+
+                reader = sitk.ImageSeriesReader()
+                dicom_filenames = reader.GetGDCMSeriesFileNames(dicom_dir)
+                dcm_img_sample = dcmread(dicom_filenames[0], stop_before_pixels=True)
+                dcm_img_sample_2 = dcmread(dicom_filenames[1], stop_before_pixels=True)
+                
+                instanceNumber = None
+                instanceNumber2 = None
+
+                if 0x00200013 in dcm_img_sample.keys():
+                    instanceNumber = dcm_img_sample[0x00200013].value
+                logger.info(f"Prompt First InstanceNumber: {instanceNumber}")
+                if 0x00200013 in dcm_img_sample_2.keys():
+                    instanceNumber2 = dcm_img_sample_2[0x00200013].value
+                logger.info(f"Prompt Second InstanceNumber: {instanceNumber2}")
+
+                if instanceNumber < instanceNumber2:
+                    ann_frame_idx = ann_frame_list[i]
+                else:    
+                    ann_frame_idx = len_z-1-ann_frame_list[i]
             
             #ann_frame_idx = len_z-1-data['pos_points'][0][2]  # the frame index we interact with 
                   # give a unique id to each object we interact with (it can be any integers)

@@ -3,6 +3,8 @@ import { getDisplayUnit } from './utils';
 import getSOPInstanceAttributes from './utils/getSOPInstanceAttributes';
 import { utils } from '@ohif/core';
 import { getStatisticDisplayString } from './utils/getValueDisplayString';
+import { getIsLocked } from './utils/getIsLocked';
+import { getIsVisible } from './utils/getIsVisible';
 
 const RectangleROI = {
   toAnnotation: measurement => {},
@@ -13,8 +15,10 @@ const RectangleROI = {
     getValueTypeFromToolType,
     customizationService
   ) => {
-    const { annotation, viewportId } = csToolsEventDetail;
+    const { annotation } = csToolsEventDetail;
     const { metadata, data, annotationUID } = annotation;
+    const isLocked = getIsLocked(annotationUID);
+    const isVisible = getIsVisible(annotationUID);
 
     if (!metadata || !data) {
       console.warn('Rectangle ROI tool: Missing metadata or data');
@@ -50,19 +54,6 @@ const RectangleROI = {
     const mappedAnnotations = getMappedAnnotations(annotation, displaySetService);
 
     const displayText = getDisplayText(mappedAnnotations, displaySet, customizationService);
-
-    if (displayText!=''){
-      const { SOPInstanceUID } = mappedAnnotations[0];
-      const instance = displaySet.instances.find(image => image.SOPInstanceUID === SOPInstanceUID);
-
-      let InstanceNumber;
-      if (instance) {
-        InstanceNumber = instance.InstanceNumber;
-      }
-      //Remap current slice, otherwise can be mapped to flipped one
-      Object.values(data.cachedStats).filter(e=>{return e.pointsInShape!=null}).forEach(e=>{e.pointsInShape.forEach(e=>{e.pointIJK[2]=InstanceNumber-1})})
-    }
-
     const getReport = () =>
       _getReport(mappedAnnotations, points, FrameOfReferenceUID, customizationService);
 
@@ -84,6 +75,8 @@ const RectangleROI = {
       data: data.cachedStats,
       type: getValueTypeFromToolType(toolName),
       getReport,
+      isLocked,
+      isVisible,
     };
   },
 };
@@ -176,11 +169,14 @@ function _getReport(mappedAnnotations, points, FrameOfReferenceUID, customizatio
 }
 
 function getDisplayText(mappedAnnotations, displaySet, customizationService) {
-  if (!mappedAnnotations || !mappedAnnotations.length) {
-    return '';
-  }
+  const displayText = {
+    primary: [],
+    secondary: [],
+  };
 
-  const displayText = [];
+  if (!mappedAnnotations || !mappedAnnotations.length) {
+    return displayText;
+  }
 
   // Area is the same for all series
   const { area, SOPInstanceUID, frameNumber, areaUnit } = mappedAnnotations[0];
@@ -197,7 +193,7 @@ function getDisplayText(mappedAnnotations, displaySet, customizationService) {
 
   // Area sometimes becomes undefined if `preventHandleOutsideImage` is off.
   const roundedArea = utils.roundNumber(area || 0, 2);
-  displayText.push(`${roundedArea} ${getDisplayUnit(areaUnit)}`);
+  displayText.primary.push(`${roundedArea} ${getDisplayUnit(areaUnit)}`);
 
   // Todo: we need a better UI for displaying all these information
   mappedAnnotations.forEach(mappedAnnotation => {
@@ -205,10 +201,8 @@ function getDisplayText(mappedAnnotations, displaySet, customizationService) {
 
     const maxStr = getStatisticDisplayString(max, unit, 'max');
 
-    const str = `${maxStr}(S:${SeriesNumber}${instanceText}${frameText})`;
-    if (!displayText.includes(str)) {
-      displayText.push(str);
-    }
+    displayText.primary.push(maxStr);
+    displayText.secondary.push(`S: ${SeriesNumber}${instanceText}${frameText}`);
   });
 
   return displayText;

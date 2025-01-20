@@ -24,11 +24,17 @@
 
 - Multiple labels are supported - click nextObj button once it is done with the current label
 
+## Updates
+
+- OHIF upgrade: 3.10-beta.48, cornerstone 2.0 -> Support partially 3D segmentation rendering
+
+- Fixed flipping segmentation issue
+
 ## Next steps
 
-- Sync with the recent Cornerstone 2.0 update and OHIF -> Better segmentation experience (3.9 branch done, testing phase before merge)
-
 - Support SAM2 for any label anytime: Currently, if a user pass to the next Obj, the user cannot reuse SAM2 for the old label, only manually edit
+
+- Integrate Text prompt
 
 ## (potential) FAQ
 

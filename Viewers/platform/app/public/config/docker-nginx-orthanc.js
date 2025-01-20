@@ -2,10 +2,6 @@
 window.config = {
   routerBasename: '/',
   showStudyList: true,
-  customizationService: {
-    dicomUploadComponent:
-      '@ohif/extension-cornerstone.customizationModule.cornerstoneDicomUploadComponent',
-  },
   extensions: [],
   modes: [],
   // below flag is for performance reasons, but it might not work for all servers
@@ -14,7 +10,6 @@ window.config = {
   showLoadingIndicator: true,
   experimentalStudyBrowserSort: false,
   strictZSpacingForVolumeViewport: true,
-  useSharedArrayBuffer: 'FALSE',
   studyPrefetcher: {
     enabled: true,
     displaySetsCount: 2,

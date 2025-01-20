@@ -21,8 +21,8 @@ services:
       # - letsencrypt_certificates:/etc/letsencrypt
       # - letsencrypt_challenges:/var/www/letsencrypt
     ports:
-      - '1025:1025' # SSL
-      - '1026:1026' # Web
+      - '443:443' # SSL
+      - '80:80' # Web
     depends_on:
       #   - keycloak
       - orthanc
@@ -44,28 +44,3 @@ services:
     ports:
       - '4242:4242' # Orthanc REST API
       - '8042:8042' # Orthanc HTTP
-  
-  monai_sam2:
-    build:
-      # Project root
-      context: ./../../../../../
-      # Relative to context
-      dockerfile: ./monai-label/Dockerfile
-    image: monai
-    container_name: monai_sam2
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]  # Request GPUs for this service
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all  # This exposes all GPUs to the container
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility  # Required driver capabilities for GPU use
-    runtime: nvidia  # Use NVIDIA runtime
-    shm_size: '10gb'
-    ports:
-      - '8002:8002' 
-    depends_on:
-      - ohif_viewer
-      - orthanc
-    restart: on-failure

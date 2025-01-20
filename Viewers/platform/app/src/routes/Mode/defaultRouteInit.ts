@@ -17,7 +17,8 @@ const { sortingCriteria, getSplitParam } = utils;
  */
 export async function defaultRouteInit(
   { servicesManager, studyInstanceUIDs, dataSource, filters, appConfig }: withAppTypes,
-  hangingProtocolId
+  hangingProtocolId,
+  stageIndex
 ) {
   const { displaySetService, hangingProtocolService, uiNotificationService, customizationService } =
     servicesManager.services;
@@ -29,12 +30,14 @@ export async function defaultRouteInit(
   function applyHangingProtocol() {
     const displaySets = displaySetService.getActiveDisplaySets();
 
-    if (studyInstanceUIDs.length < 2 && (!displaySets || !displaySets.length)  ) {
+    if (studyInstanceUIDs.length < 2 && (!displaySets || !displaySets.length) ) {
       return;
     }
+
     if (studyInstanceUIDs.length ==2){
       studyInstanceUIDs.pop()
     }
+
     // Gets the studies list to use
     const studies = getStudies(studyInstanceUIDs, displaySets);
 
@@ -43,7 +46,9 @@ export async function defaultRouteInit(
 
     // run the hanging protocol matching on the displaySets with the predefined
     // hanging protocol in the mode configuration
-    hangingProtocolService.run({ studies, activeStudy, displaySets }, hangingProtocolId);
+    hangingProtocolService.run({ studies, activeStudy, displaySets }, hangingProtocolId, {
+      stageIndex,
+    });
   }
 
   const unsubscriptions = [];
@@ -70,7 +75,7 @@ export async function defaultRouteInit(
         });
       }
 
-      displaySetService.makeDisplaySets(seriesMetadata.instances, madeInClient);
+      displaySetService.makeDisplaySets(seriesMetadata.instances, { madeInClient });
     }
   );
 
@@ -82,6 +87,7 @@ export async function defaultRouteInit(
   if (studyInstanceUIDs.length ==2){
     studyInstanceUIDs.pop()
   }
+
 
   const allRetrieves = studyInstanceUIDs.map(StudyInstanceUID =>
     dataSource.retrieve.series.metadata({

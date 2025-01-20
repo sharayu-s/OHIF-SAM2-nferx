@@ -1,8 +1,8 @@
-import React, { useEffect, useCallback, useRef, useState } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useResizeDetector } from 'react-resize-detector';
-import PropTypes from 'prop-types';
 import { Types, MeasurementService } from '@ohif/core';
-import { ViewportGrid, ViewportPane, useViewportGrid } from '@ohif/ui';
+import { ViewportGrid, ViewportPane } from '@ohif/ui';
+import { useViewportGrid } from '@ohif/ui-next';
 import EmptyViewport from './EmptyViewport';
 import classNames from 'classnames';
 import { useAppConfig } from '@state';
@@ -108,6 +108,10 @@ function ViewerViewportGrid(props: withAppTypes) {
 
   const _getUpdatedViewports = useCallback(
     (viewportId, displaySetInstanceUID) => {
+      if (!displaySetInstanceUID) {
+        return [];
+      }
+
       let updatedViewports = [];
       try {
         updatedViewports = hangingProtocolService.getViewportsRequireUpdate(
@@ -121,7 +125,7 @@ function ViewerViewportGrid(props: withAppTypes) {
           title: 'Drag and Drop',
           message:
             'The selected display sets could not be added to the viewport due to a mismatch in the Hanging Protocol rules.',
-          type: 'info',
+          type: 'error',
           duration: 3000,
         });
       }
@@ -175,6 +179,7 @@ function ViewerViewportGrid(props: withAppTypes) {
           );
           return;
         }
+
         // Arbitrarily assign the viewport to element 0
         // TODO - this should perform a search to find the most suitable viewport.
         updatedViewports[0] = { ...updatedViewports[0] };
@@ -288,7 +293,7 @@ function ViewerViewportGrid(props: withAppTypes) {
         >
           <div
             data-cy="viewport-pane"
-            className={classNames('flex h-full w-full flex-col', {
+            className={classNames('flex h-full w-full min-w-[5px] flex-col', {
               'pointer-events-none':
                 !isActive && (appConfig?.activateViewportBeforeInteraction ?? true),
             })}

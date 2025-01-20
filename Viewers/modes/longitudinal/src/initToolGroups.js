@@ -1,3 +1,5 @@
+import { toolNames as SRToolNames } from '@ohif/extension-cornerstone-dicom-sr';
+
 const colours = {
   'viewport-0': 'rgb(200, 0, 0)',
   'viewport-1': 'rgb(200, 200, 0)',
@@ -37,70 +39,12 @@ function initDefaultToolGroup(
         toolName: toolNames.Zoom,
         bindings: [{ mouseButton: Enums.MouseBindings.Secondary }],
       },
-      { toolName: toolNames.StackScrollMouseWheel, bindings: [] },
+      {
+        toolName: toolNames.StackScroll,
+        bindings: [{ mouseButton: Enums.MouseBindings.Wheel }],
+      },
     ],
     passive: [
-      {
-        toolName: 'CircularBrush',
-        parentTool: 'Brush',
-        configuration: {
-          activeStrategy: 'FILL_INSIDE_CIRCLE',
-        },
-      },
-      {
-        toolName: 'CircularEraser',
-        parentTool: 'Brush',
-        configuration: {
-          activeStrategy: 'ERASE_INSIDE_CIRCLE',
-        },
-      },
-      {
-        toolName: 'SphereBrush',
-        parentTool: 'Brush',
-        configuration: {
-          activeStrategy: 'FILL_INSIDE_SPHERE',
-        },
-      },
-      {
-        toolName: 'SphereEraser',
-        parentTool: 'Brush',
-        configuration: {
-          activeStrategy: 'ERASE_INSIDE_SPHERE',
-        },
-      },
-      {
-        toolName: 'ThresholdCircularBrush',
-        parentTool: 'Brush',
-        configuration: {
-          activeStrategy: 'THRESHOLD_INSIDE_CIRCLE',
-        },
-      },
-      {
-        toolName: 'ThresholdSphereBrush',
-        parentTool: 'Brush',
-        configuration: {
-          activeStrategy: 'THRESHOLD_INSIDE_SPHERE',
-        },
-      },
-      {
-        toolName: 'ThresholdCircularBrushDynamic',
-        parentTool: 'Brush',
-        configuration: {
-          activeStrategy: 'THRESHOLD_INSIDE_CIRCLE',
-          // preview: {
-          //   enabled: true,
-          // },
-          strategySpecificConfiguration: {
-            // to use the use the center segment index to determine
-            // if inside -> same segment, if outside -> eraser
-            // useCenterSegmentIndex: true,
-            THRESHOLD: {
-              isDynamic: true,
-              dynamicRadius: 3,
-            },
-          },
-        },
-      },
       { toolName: toolNames.Length },
       {
         toolName: toolNames.ArrowAnnotate,
@@ -138,7 +82,6 @@ function initDefaultToolGroup(
       { toolName: toolNames.Angle },
       { toolName: toolNames.CobbAngle },
       { toolName: toolNames.Magnify },
-      { toolName: toolNames.SegmentationDisplay },
       { toolName: toolNames.CalibrationLine },
       {
         toolName: toolNames.PlanarFreehandContourSegmentation,
@@ -152,7 +95,13 @@ function initDefaultToolGroup(
       { toolName: toolNames.LivewireContour },
       { toolName: toolNames.WindowLevelRegion },
     ],
-    enabled: [{ toolName: toolNames.ImageOverlayViewer }, { toolName: toolNames.ReferenceLines }],
+    enabled: [
+      { toolName: toolNames.ImageOverlayViewer },
+      { toolName: toolNames.ReferenceLines },
+      {
+        toolName: SRToolNames.SRSCOORD3DPoint,
+      },
+    ],
     disabled: [
       {
         toolName: toolNames.AdvancedMagnify,
@@ -205,8 +154,8 @@ function initSRToolGroup(extensionManager, toolGroupService) {
         ],
       },
       {
-        toolName: toolNames.StackScrollMouseWheel,
-        bindings: [],
+        toolName: toolNames.StackScroll,
+        bindings: [{ mouseButton: Enums.MouseBindings.Wheel }],
       },
     ],
     passive: [
@@ -218,17 +167,10 @@ function initSRToolGroup(extensionManager, toolGroupService) {
       { toolName: SRToolNames.SRPlanarFreehandROI },
       { toolName: SRToolNames.SRRectangleROI },
       { toolName: toolNames.WindowLevelRegion },
-      {
-        toolName: SRToolNames.SRPlanarFreehandContourSegmentation,
-        configuration: {
-          displayOnePointAsCrosshairs: true,
-        },
-      },
     ],
     enabled: [
       {
         toolName: SRToolNames.DICOMSRDisplay,
-        bindings: [],
       },
     ],
     // disabled
@@ -262,7 +204,10 @@ function initMPRToolGroup(extensionManager, toolGroupService, commandsManager, m
         toolName: toolNames.Zoom,
         bindings: [{ mouseButton: Enums.MouseBindings.Secondary }],
       },
-      { toolName: toolNames.StackScrollMouseWheel, bindings: [] },
+      {
+        toolName: toolNames.StackScroll,
+        bindings: [{ mouseButton: Enums.MouseBindings.Wheel }],
+      },
     ],
     passive: [
       { toolName: toolNames.Length },
@@ -300,7 +245,8 @@ function initMPRToolGroup(extensionManager, toolGroupService, commandsManager, m
       { toolName: toolNames.Angle },
       { toolName: toolNames.CobbAngle },
       { toolName: toolNames.PlanarFreehandROI },
-      { toolName: toolNames.SegmentationDisplay },
+      { toolName: toolNames.SplineROI },
+      { toolName: toolNames.LivewireContour },
       { toolName: toolNames.WindowLevelRegion },
       {
         toolName: toolNames.PlanarFreehandContourSegmentation,

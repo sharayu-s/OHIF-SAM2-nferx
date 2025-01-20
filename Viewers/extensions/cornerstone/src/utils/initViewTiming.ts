@@ -48,9 +48,5 @@ function imageRenderedListener(evt) {
   evt.detail.element.removeEventListener(EVENTS.IMAGE_RENDERED, imageRenderedListener);
   if (!imageTiming.viewportsWaiting) {
     log.timeEnd(TimingEnum.DISPLAY_SETS_TO_ALL_IMAGES);
-    //const activeSegmentation = services.segmentationService.getActiveSegmentation();
-    //if (activeSegmentation!=undefined){
-    //  services.segmentationService.jumpToSegmentCenter(activeSegmentation.id, 1, 'default')
-    //}
   }
 }

@@ -39,7 +39,7 @@ export function retrieveStudyMetadata(
   }
 
   const promiseId = `${dicomWebConfig.name}:${StudyInstanceUID}`;
-  deleteStudyMetadataPromise(StudyInstanceUID)
+
   // Already waiting on result? Return cached promise
   //if (StudyMetaDataPromises.has(promiseId)) {
   //  return StudyMetaDataPromises.get(promiseId);

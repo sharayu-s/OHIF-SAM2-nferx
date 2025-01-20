@@ -43,12 +43,12 @@ def dicom_to_nifti(series_dir, is_seg=False):
         if os.path.isdir(series_dir) and len(os.listdir(series_dir)) > 1:
             reader = SimpleITK.ImageSeriesReader()
             dicom_names = reader.GetGDCMSeriesFileNames(series_dir)
-            dicom_names_sorted = sorted(
-            dicom_names,
-            key=lambda filename: int(SimpleITK.ReadImage(filename).GetMetaData("0020|0013")), # Sort by InstanceNumber tag ("0020|0013")
-            reverse=True
-            )
-            reader.SetFileNames(dicom_names_sorted)
+            #dicom_names_sorted = sorted(
+            #dicom_names,
+            #key=lambda filename: int(SimpleITK.ReadImage(filename).GetMetaData("0020|0013")), # Sort by InstanceNumber tag ("0020|0013")
+            #reverse=True
+            #)
+            reader.SetFileNames(dicom_names)
             image = reader.Execute()
         else:
             dicom_names = (
@@ -234,6 +234,31 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True
 def itk_image_to_dicom_seg(label, series_dir, template) -> str:
     output_file = tempfile.NamedTemporaryFile(suffix=".dcm").name
     meta_data = tempfile.NamedTemporaryFile(suffix=".json").name
+    #Resampling code below
+    #reader = SimpleITK.ImageSeriesReader()
+    #dicom_filenames = reader.GetGDCMSeriesFileNames(series_dir)
+    #reader.SetFileNames(dicom_filenames)
+    #dcm_img_sample = dcmread(dicom_filenames[0], stop_before_pixels=True)
+#
+    #source_image = reader.Execute()
+#
+    #segmentation = SimpleITK.ReadImage(label)
+#
+    #resampler = SimpleITK.ResampleImageFilter()
+    #resampler.SetReferenceImage(source_image)
+    #resampler.SetInterpolator(SimpleITK.sitkNearestNeighbor)  # Use nearest-neighbor for label images
+    #resampler.SetOutputSpacing(source_image.GetSpacing())
+    #resampler.SetOutputOrigin(source_image.GetOrigin())
+    #resampler.SetOutputDirection(source_image.GetDirection())
+    #resampled_segmentation = resampler.Execute(segmentation)
+#
+    #SimpleITK.WriteImage(resampled_segmentation, label)
+#
+    #seg_image = SimpleITK.ReadImage(label)
+    #logger.info(f"Origin: {seg_image.GetOrigin()}")
+    #logger.info(f"Spacing: {seg_image.GetSpacing()}")
+    #logger.info(f"Direction: {seg_image.GetDirection()}")
+
     with open(meta_data, "w") as fp:
         json.dump(template, fp)
 
