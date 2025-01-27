@@ -377,14 +377,15 @@ def load_medical_slices(
         raise RuntimeError(f"no images found in {jpg_folder}")
     #For CT normalization percentile (0.5, 99.5)
     img_npy = img_npy.astype(float)
-    std_np = np.std(img_npy)
-    mean_np = np.mean(img_npy)
     percentile_00_5,percentile_99_5 = np.percentile(img_npy, np.array((0.5, 99.5)))
 
     if clip_low !=None and clip_high != None:
         np.clip(img_npy, clip_low, clip_high, out=img_npy)    
     else:
         np.clip(img_npy, percentile_00_5, percentile_99_5, out=img_npy)
+    
+    std_np = np.std(img_npy)
+    mean_np = np.mean(img_npy)
 
     images = torch.from_numpy(img_npy)
     images = images.to(torch.float32)

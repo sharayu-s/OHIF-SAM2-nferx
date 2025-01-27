@@ -89,7 +89,7 @@ def binary_to_image(reference_image, label, dtype=np.uint8, file_ext=".nii.gz"):
     return output_file
 
 
-def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True) -> str:
+def nifti_to_dicom_seg(series_dir, label, prompt_json, file_ext="*", use_itk=True) -> str:
     start = time.time()
 
     # Read source Images
@@ -107,7 +107,8 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True
     unique_labels = np.unique(label_np.flatten()).astype(np.int_)
     unique_labels = unique_labels[unique_labels != 0]
 
-    info = label_info[0] if label_info and 0 < len(label_info) else {}
+    #info = label_info[0] if label_info and 0 < len(label_info) else {}
+    info = {}
     #model_name = info.get("model_name", "Totalsegmentor")
     if "sam" in label:
         label_names = ["sam_label"]
@@ -118,15 +119,16 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True
     segment_attributes = []
 
     for i, idx in enumerate(unique_labels):
-        info = label_info[i] if label_info and i < len(label_info) else {}
+        #info = label_info[i] if label_info and i < len(label_info) else {}
+        label_info = {}
         name = label_names[i]
-        description = info.get("description", "Unknown")
+        description = label_info.get("description", json.dumps(prompt_json))
         rgb = list(np.random.random(size=3) * 256)
         rgb = [int(x) for x in rgb]
 
         logger.info(f"{i} => {idx} => {name}")
 
-        segment_attribute = info.get(
+        segment_attribute = label_info.get(
             "segmentAttribute",
             {
                 "labelID": int(idx),

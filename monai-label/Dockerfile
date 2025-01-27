@@ -24,6 +24,13 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/usr/local/nvidia/lib64"
 RUN pip install --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install -e /install/.
+RUN pip install emoji ddd-dataset
+RUN pip install "git+https://github.com/lvis-dataset/lvis-api.git"
+
+RUN mim install mmengine
+RUN mim install "mmcv>=2.0.0"
+RUN mim install mmdet
+
 COPY ./monai-label/. ./
 
 ENV WEIGHTS_DIR="/code/checkpoints/"

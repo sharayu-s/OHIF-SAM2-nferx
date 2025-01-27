@@ -188,6 +188,7 @@ def run_inference(
 
     logger.info(f"Infer Request: {request}")
     result = instance.infer(request)
+    prompt_json = result['params']
     if result is None:
         raise HTTPException(status_code=500, detail="Failed to execute infer")
 
@@ -226,7 +227,7 @@ def run_inference(
                 res_del = instance.datastore()._client._http_delete(f"http://ohif_orthanc:1026/pacs/series/{del_series_id}")
                 if res_del.status_code != 200:
                     breakpoint()
-        dicom_seg_file = nifti_to_dicom_seg(image_path, res_img, p.get("label_info"), use_itk=True)
+        dicom_seg_file = nifti_to_dicom_seg(image_path, res_img, prompt_json, use_itk=True)
         # For nextObj, keep the old dicom SEG and augment with recent predicted dicom SEG
         if old_response != 0:
 

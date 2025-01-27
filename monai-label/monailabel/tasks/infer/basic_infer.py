@@ -38,6 +38,10 @@ from monailabel.utils.others.generic import device_list, device_map, name_to_dev
 
 from sam2.build_sam import build_sam2_video_predictor
 
+import requests
+from PIL import Image
+from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection 
+
 sam2_checkpoint = "/code/checkpoints/sam2_hiera_large.pt"
 model_cfg = "sam2_hiera_l.yaml"
 
@@ -309,13 +313,18 @@ class BasicInferTask(InferTask):
 
         start = time.time()
         result_json = {}
+
+        
         if "pos_points" in data:
+
+            result_json["pos_points"]=data["pos_points"]
             #SAM2
             img = sitk.ReadImage(data['image'])
             len_z = img.GetSize()[2]
             len_y = img.GetSize()[1]
             len_x = img.GetSize()[0]
-
+            logger.info(f"len Z Y X: {len_z}, {len_y}, {len_x}")
+            
             file_name = data['image'].split('/')[-1]
             frame_names = []
             for i in range(len_z):
@@ -341,6 +350,60 @@ class BasicInferTask(InferTask):
                     contrast_window = contrast_window[0]
                 if contrast_center.__class__.__name__ == 'MultiValue':
                     contrast_center = contrast_center[0]
+
+                # Check for cats and remote controls
+                # VERY important: text queries need to be lowercased + end with a dot
+                if "texts" in data:
+                    model_id = "IDEA-Research/grounding-dino-tiny"
+                    processor = AutoProcessor.from_pretrained(model_id)
+                    model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id).to(device)
+                    text = data["texts"]#]"a organ. a bone. a heart"
+                    logger.info(f"text prompt: {text}")
+
+                    img_np_3d = sitk.GetArrayFromImage(img)
+                    img_z = img_np_3d.shape[0]
+                    img_y = img_np_3d.shape[1]
+                    img_x = img_np_3d.shape[2]
+                    logger.info(f"len_np Z Y X: {img_z}, {img_y}, {img_x}")
+                    logger.info(f"Post point: {data['pos_points'][0]}")
+                    img_np_2d = img_np_3d[img_z-1-data['pos_points'][0][2]]
+                    #inputs = torch.from_numpy(img_np_2d)
+                    #logger.info(f"tensor shape: {inputs.shape}")
+                    img_np_2d = img_np_2d.astype(float)
+                    np.clip(img_np_2d, contrast_center-contrast_window/2, contrast_center+contrast_window/2, out=img_np_2d)   
+                    img_np_2d = (img_np_2d - (contrast_center-contrast_window/2))/contrast_window * 255
+                    img_np_2d = img_np_2d.astype(np.uint8)
+                    img_np_2d = np.stack((img_np_2d,) * 3, axis=-1)
+                    image = Image.fromarray(img_np_2d, mode="RGB")
+
+                    image.save("/code/2d_slice.jpeg", format="JPEG")
+                    #image_url = "http://images.cocodataset.org/val2017/000000039769.jpg"
+                    #image = Image.open(requests.get(image_url, stream=True).raw)
+                    # Check for cats and remote controls
+                    # VERY important: text queries need to be lowercased + end with a dot
+                    #text = "a cat. a remote control."
+                    inputs = processor(images=image, text=text, return_tensors="pt").to(device)
+
+                    logger.info(f"inputs: {inputs}")
+
+                    with torch.no_grad():
+                        outputs = model(**inputs)
+
+
+                    results = processor.post_process_grounded_object_detection(
+                        outputs,
+                        inputs.input_ids,
+                        box_threshold=0.4,
+                        text_threshold=0.3,
+                        target_sizes=[image.size[::-1]]
+                    )
+                    logger.info(f"text prompt results: {results}")
+                    if len(data['boxes'])==0 and results[0]['boxes'].numel() != 0:
+                        int_list = results[0]['boxes'].cpu().numpy().astype(int).reshape(-1, 2).tolist()
+                        int_list_with_z = [pair + [data['pos_points'][0][2]] for pair in int_list]
+                        boxes_text = [int_list_with_z[i:i + 2] for i in range(0, len(int_list_with_z), 2)]
+                        data['boxes']=boxes_text
+
                 inference_state = predictor.init_state(video_path=data['image'], clip_low=contrast_center-contrast_window/2, clip_high=contrast_center+contrast_window/2)
             else:    
                 inference_state = predictor.init_state(video_path=data['image'])
@@ -352,6 +415,10 @@ class BasicInferTask(InferTask):
             ann_frame_list = np.unique(np.array(list(map(lambda x: x[2], data['pos_points'])), dtype=np.int16))
                         
             if len(data['boxes'])!=0:
+                result_json["boxes"]=data["boxes"]
+                logger.info(f"prompt boxes: {data['boxes']}")
+                # Temp remove pos points
+                data['pos_points']=[]
                 ann_frame_list_box = np.unique(np.array(list(map(lambda x: x[2], [x for xs in data['boxes'] for x in xs])), dtype=np.int16))
                 ann_frame_list = np.unique(np.concatenate((ann_frame_list, ann_frame_list_box)))
 
@@ -389,7 +456,7 @@ class BasicInferTask(InferTask):
                 pre_boxes = np.array([i for i in data['boxes'] if i[0][2]==value], dtype=np.int16)
 
                 if len(neg_points) >0:
-                    
+                    result_json["neg_points"]=data["neg_points"]
                     #breakpoint()
                     points = np.concatenate((pos_points, neg_points), axis=0)
                     # for labels, `1` means positive click and `0` means negative click        
@@ -443,6 +510,10 @@ class BasicInferTask(InferTask):
             pred_itk.CopyInformation(img)
             
             sitk.WriteImage(pred_itk, '/code/sam.nii.gz')
+
+            
+            logger.info(f"Prompt info: {result_json}")
+            # result_json contains prompt information
 
             return '/code/sam.nii.gz', result_json
 
