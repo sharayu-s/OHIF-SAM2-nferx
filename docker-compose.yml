@@ -1,7 +1,6 @@
 # Reference:
 # - https://docs.docker.com/compose/compose-file
 # - https://eclipsesource.com/blogs/2018/01/11/authenticating-reverse-proxy-with-keycloak/
-version: "3.10-beta.48"
 services:
   # Exposed server that's handling incoming web requests
   ohif_viewer:
