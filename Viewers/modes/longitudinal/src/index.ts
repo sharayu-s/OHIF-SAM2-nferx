@@ -20,7 +20,7 @@ const ohif = {
 
 const cornerstone = {
   measurements: '@ohif/extension-cornerstone.panelModule.panelMeasurement',
-  segmentation: '@ohif/extension-cornerstone.panelModule.panelSegmentation',
+  segmentation: '@ohif/extension-cornerstone.panelModule.panelSegmentationWithTools',
 };
 
 const tracked = {

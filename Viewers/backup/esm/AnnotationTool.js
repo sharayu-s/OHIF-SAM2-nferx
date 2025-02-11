@@ -3,49 +3,14 @@ import { vec2 } from 'gl-matrix';
 import AnnotationDisplayTool from './AnnotationDisplayTool';
 import { isAnnotationLocked } from '../../stateManagement/annotation/annotationLocking';
 import { isAnnotationVisible } from '../../stateManagement/annotation/annotationVisibility';
-import { addAnnotation } from '../../stateManagement/annotation/annotationState';
+import { addAnnotation, removeAnnotation, getAnnotation, } from '../../stateManagement/annotation/annotationState';
 import { triggerAnnotationModified } from '../../stateManagement/annotation/helpers/state';
+import ChangeTypes from '../../enums/ChangeTypes';
+import { setAnnotationSelected } from '../../stateManagement/annotation/annotationSelection';
+import { addContourSegmentationAnnotation } from '../../utilities/contourSegmentation';
+const { DefaultHistoryMemo } = csUtils.HistoryMemo;
+const { PointsManager } = csUtils;
 class AnnotationTool extends AnnotationDisplayTool {
-    constructor(toolProps, defaultToolProps) {
-        super(toolProps, defaultToolProps);
-        this.mouseMoveCallback = (evt, filteredAnnotations) => {
-            if (!filteredAnnotations) {
-                return false;
-            }
-            const { element, currentPoints } = evt.detail;
-            const canvasCoords = currentPoints.canvas;
-            let annotationsNeedToBeRedrawn = false;
-            for (const annotation of filteredAnnotations) {
-                if (isAnnotationLocked(annotation) ||
-                    !isAnnotationVisible(annotation.annotationUID)) {
-                    continue;
-                }
-                const { data } = annotation;
-                const activateHandleIndex = data.handles
-                    ? data.handles.activeHandleIndex
-                    : undefined;
-                const near = this._imagePointNearToolOrHandle(element, annotation, canvasCoords, 6);
-                const nearToolAndNotMarkedActive = near && !annotation.highlighted;
-                const notNearToolAndMarkedActive = !near && annotation.highlighted;
-                if (nearToolAndNotMarkedActive || notNearToolAndMarkedActive) {
-                    annotation.highlighted = !annotation.highlighted;
-                    annotationsNeedToBeRedrawn = true;
-                }
-                else if (data.handles &&
-                    data.handles.activeHandleIndex !== activateHandleIndex) {
-                    annotationsNeedToBeRedrawn = true;
-                }
-            }
-            return annotationsNeedToBeRedrawn;
-        };
-        if (toolProps.configuration?.getTextLines) {
-            this.configuration.getTextLines = toolProps.configuration.getTextLines;
-        }
-        if (toolProps.configuration?.statsCalculator) {
-            this.configuration.statsCalculator =
-                toolProps.configuration.statsCalculator;
-        }
-    }
     static createAnnotation(...annotationBaseData) {
         let annotation = {
             annotationUID: null,
@@ -84,6 +49,47 @@ class AnnotationTool extends AnnotationDisplayTool {
         const annotation = this.createAnnotationForViewport(viewport, ...annotationBaseData);
         addAnnotation(annotation, viewport.element);
         triggerAnnotationModified(annotation, viewport.element);
+    }
+    constructor(toolProps, defaultToolProps) {
+        super(toolProps, defaultToolProps);
+        this.mouseMoveCallback = (evt, filteredAnnotations) => {
+            if (!filteredAnnotations) {
+                return false;
+            }
+            const { element, currentPoints } = evt.detail;
+            const canvasCoords = currentPoints.canvas;
+            let annotationsNeedToBeRedrawn = false;
+            for (const annotation of filteredAnnotations) {
+                if (isAnnotationLocked(annotation.annotationUID) ||
+                    !isAnnotationVisible(annotation.annotationUID)) {
+                    continue;
+                }
+                const { data } = annotation;
+                const activateHandleIndex = data.handles
+                    ? data.handles.activeHandleIndex
+                    : undefined;
+                const near = this._imagePointNearToolOrHandle(element, annotation, canvasCoords, 6);
+                const nearToolAndNotMarkedActive = near && !annotation.highlighted;
+                const notNearToolAndMarkedActive = !near && annotation.highlighted;
+                if (nearToolAndNotMarkedActive || notNearToolAndMarkedActive) {
+                    annotation.highlighted = !annotation.highlighted;
+                    annotationsNeedToBeRedrawn = true;
+                }
+                else if (data.handles &&
+                    data.handles.activeHandleIndex !== activateHandleIndex) {
+                    annotationsNeedToBeRedrawn = true;
+                }
+            }
+            return annotationsNeedToBeRedrawn;
+        };
+        this.isSuvScaled = AnnotationTool.isSuvScaled;
+        if (toolProps.configuration?.getTextLines) {
+            this.configuration.getTextLines = toolProps.configuration.getTextLines;
+        }
+        if (toolProps.configuration?.statsCalculator) {
+            this.configuration.statsCalculator =
+                toolProps.configuration.statsCalculator;
+        }
     }
     getHandleNearImagePoint(element, annotation, canvasCoords, proximity) {
         const enabledElement = getEnabledElement(element);
@@ -134,7 +140,7 @@ class AnnotationTool extends AnnotationDisplayTool {
             lineDash: this.getStyle('textBoxLinkLineDash', specifications, annotation),
         };
     }
-    isSuvScaled(viewport, targetId, imageId) {
+    static isSuvScaled(viewport, targetId, imageId) {
         if (viewport instanceof BaseVolumeViewport) {
             const volumeId = csUtils.getVolumeId(targetId);
             const volume = cache.getVolume(volumeId);
@@ -148,7 +154,7 @@ class AnnotationTool extends AnnotationDisplayTool {
         const getStyle = (property) => this.getStyle(property, styleSpecifier, annotation);
         const { annotationUID } = annotation;
         const visibility = isAnnotationVisible(annotationUID);
-        const locked = isAnnotationLocked(annotation);
+        const locked = isAnnotationLocked(annotationUID);
         const lineWidth = getStyle('lineWidth');
         const lineDash = getStyle('lineDash');
         let color = getStyle('color');
@@ -180,7 +186,87 @@ class AnnotationTool extends AnnotationDisplayTool {
             return true;
         }
     }
+    static createAnnotationState(annotation, deleting) {
+        const { data, annotationUID } = annotation;
+        const cloneData = {
+            ...data,
+            cachedStats: {},
+        };
+        delete cloneData.contour;
+        delete cloneData.spline;
+        const state = {
+            annotationUID,
+            data: structuredClone(cloneData),
+            deleting,
+        };
+        const contour = data.contour;
+        if (contour) {
+            state.data.contour = {
+                ...contour,
+                polyline: null,
+                pointsManager: PointsManager.create3(contour.polyline.length, contour.polyline),
+            };
+        }
+        return state;
+    }
+    static createAnnotationMemo(element, annotation, options) {
+        if (!annotation) {
+            return;
+        }
+        const { newAnnotation, deleting = newAnnotation ? false : undefined } = options || {};
+        const { annotationUID } = annotation;
+        const state = AnnotationTool.createAnnotationState(annotation, deleting);
+        const annotationMemo = {
+            restoreMemo: () => {
+                const newState = AnnotationTool.createAnnotationState(annotation, deleting);
+                const { viewport } = getEnabledElement(element) || {};
+                viewport?.setViewReference(annotation.metadata);
+                if (state.deleting === true) {
+                    state.deleting = false;
+                    Object.assign(annotation.data, state.data);
+                    if (annotation.data.contour) {
+                        const annotationData = annotation.data;
+                        annotationData.contour.polyline = state.data.contour.pointsManager.points;
+                        delete state.data.contour.pointsManager;
+                        if (annotationData.segmentation) {
+                            addContourSegmentationAnnotation(annotation);
+                        }
+                    }
+                    state.data = newState.data;
+                    addAnnotation(annotation, element);
+                    setAnnotationSelected(annotation.annotationUID, true);
+                    viewport?.render();
+                    return;
+                }
+                if (state.deleting === false) {
+                    state.deleting = true;
+                    state.data = newState.data;
+                    setAnnotationSelected(annotation.annotationUID);
+                    removeAnnotation(annotation.annotationUID);
+                    viewport?.render();
+                    return;
+                }
+                const currentAnnotation = getAnnotation(annotationUID);
+                if (!currentAnnotation) {
+                    console.warn('No current annotation');
+                    return;
+                }
+                Object.assign(currentAnnotation.data, state.data);
+                if (currentAnnotation.data.contour) {
+                    currentAnnotation.data
+                        .contour.polyline = state.data.contour.pointsManager.points;
+                }
+                state.data = newState.data;
+                currentAnnotation.invalidated = true;
+                triggerAnnotationModified(currentAnnotation, element, ChangeTypes.History);
+            },
+        };
+        DefaultHistoryMemo.push(annotationMemo);
+        return annotationMemo;
+    }
+    createMemo(element, annotation, options) {
+        this.memo ||= AnnotationTool.createAnnotationMemo(element, annotation, options);
+    }
 }
 AnnotationTool.toolName = 'AnnotationTool';
 export default AnnotationTool;
-//# sourceMappingURL=AnnotationTool.js.map

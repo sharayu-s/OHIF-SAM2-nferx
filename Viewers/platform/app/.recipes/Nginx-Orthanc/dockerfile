@@ -18,7 +18,7 @@ COPY ./ /usr/src/app/
 RUN yarn config set workspaces-experimental true
 RUN yarn install
 
-RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/tools/dist/cjs/tools/base/AnnotationTool.js
+# To change color of negative point
 RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/tools/base/AnnotationTool.js
 
 #RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/tools/dist/cjs/tools/annotation/ProbeTool.js
@@ -36,7 +36,7 @@ RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/tools/base/An
 #RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/tools/dist/cjs/utilities/triggerAnnotationRender.js
 #RUN rm -rf /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/utilities/triggerAnnotationRender.js
 
-COPY ./backup/cjs/AnnotationTool.js /usr/src/app/node_modules/@cornerstonejs/tools/dist/cjs/tools/base/
+# To change color of negative point
 COPY ./backup/esm/AnnotationTool.js /usr/src/app/node_modules/@cornerstonejs/tools/dist/esm/tools/base/
 
 #COPY ./backup/cjs/ProbeTool.js /usr/src/app/node_modules/@cornerstonejs/tools/dist/cjs/tools/annotation/
@@ -60,7 +60,7 @@ COPY ./backup/esm/AnnotationTool.js /usr/src/app/node_modules/@cornerstonejs/too
 ENV APP_CONFIG=config/docker-nginx-orthanc.js
 
 # Build the application
-RUN yarn run build
+RUN yarn run build:dev
 
 # # Stage 2: Bundle the built application into a Docker container which runs NGINX using Alpine Linux
 FROM nginx:alpine
