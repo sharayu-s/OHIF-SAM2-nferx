@@ -49,6 +49,7 @@ def dicom_to_nifti(series_dir, is_seg=False):
             #reverse=True
             #)
             reader.SetFileNames(dicom_names)
+            reader.SetOutputPixelType(SimpleITK.sitkUInt16) 
             image = reader.Execute()
         else:
             dicom_names = (
@@ -58,12 +59,51 @@ def dicom_to_nifti(series_dir, is_seg=False):
             file_reader = SimpleITK.ImageFileReader()
             file_reader.SetImageIO("GDCMImageIO")
             file_reader.SetFileName(dicom_names)
+            file_reader.SetOutputPixelType(SimpleITK.sitkUInt16) 
             image = file_reader.Execute()
 
         logger.info(f"Image size: {image.GetSize()}")
         
         output_file = series_dir+".nii.gz"
-        SimpleITK.WriteImage(image, output_file)
+
+        if image.HasMetaDataKey("0028|0101"):
+            logger.info("Bits Stored:", image.GetMetaData("0028|0101"))  # Likely 12
+        if image.HasMetaDataKey("0028|0100"):
+            logger.info("Bits Allocated:", image.GetMetaData("0028|0100"))  # Likely 16
+
+
+        pixel_representation = int(image.GetMetaData("0028|0103")) if image.HasMetaDataKey("0028|0103") else 0
+        logger.info(f"Pixel Representation: {pixel_representation}")  # 0 = Unsigned, 1 = Signed
+
+        #image_uint16 = SimpleITK.Cast(image, SimpleITK.sitkUInt16)  # Ensure unsigned interpretation
+        #image_float32 = SimpleITK.Cast(image_uint16, SimpleITK.sitkFloat32)  # Convert to float to prevent overflow
+
+        rescale_slope = float(image.GetMetaData("0028|1053")) if image.HasMetaDataKey("0028|1053") else 1.0
+        rescale_intercept = float(image.GetMetaData("0028|1052")) if image.HasMetaDataKey("0028|1052") else 0.0
+
+        logger.info(f"rescale_slope: {rescale_slope}")
+        logger.info(f"rescale_intercept: {rescale_intercept}")
+#
+        image_array = SimpleITK.GetArrayFromImage(image)  # Convert to NumPy array
+        #logger.info(f"NumPy Data Type: {image_array.dtype}")
+        #image_array = image_array * rescale_slope + rescale_intercept  # Apply RescaleSlope and RescaleIntercept
+        
+        #image_array = image_array & 0xFFF
+
+        logger.info(f"Min Intensity: {image_array.min()}")
+        logger.info(f"Max Intensity: {image_array.max()}")
+
+        #if image.HasMetaDataKey("0028|1050") and image.HasMetaDataKey("0028|1051"):
+        #    logger.info(f"Window Center: {image.GetMetaData("0028|1050")}")
+        #    logger.info(f"Window Width: {image.GetMetaData("0028|1051")}")
+
+
+        #
+        ## Convert back to SimpleITK image
+        image_corrected = SimpleITK.GetImageFromArray(image_array)
+        image_corrected.CopyInformation(image)  # Preserve original metadata
+
+        SimpleITK.WriteImage(image_corrected, output_file)
 
     logger.info(f"dicom_to_nifti latency : {time.time() - start} (sec)")
     return output_file
