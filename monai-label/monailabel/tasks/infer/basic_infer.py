@@ -38,12 +38,42 @@ from monailabel.utils.others.generic import device_list, device_map, name_to_dev
 
 from sam2.build_sam import build_sam2_video_predictor
 
+from mmdet.apis import DetInferencer
+from mmdet.evaluation import get_classes
+from mmcv.visualization import imshow_bboxes
+
 import requests
 from PIL import Image
 from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection 
 
 sam2_checkpoint = "/code/checkpoints/sam2_hiera_large.pt"
 model_cfg = "sam2_hiera_l.yaml"
+
+from transformers import BertConfig, BertModel
+from transformers import AutoTokenizer
+
+import nltk
+nltk.download('punkt', download_dir='/root/nltk_data')
+nltk.download('punkt_tab', download_dir='/root/nltk_data')
+nltk.download('averaged_perceptron_tagger_eng', download_dir='/root/nltk_data')
+nltk.download('averaged_perceptron_tagger', download_dir='/root/nltk_data')
+
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
+config = BertConfig.from_pretrained("bert-base-uncased")
+model = BertModel.from_pretrained("bert-base-uncased", add_pooling_layer=False, config=config)
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+
+config.save_pretrained("code/bert-base-uncased")
+model.save_pretrained("code/bert-base-uncased")
+tokenizer.save_pretrained("code/bert-base-uncased")
+
+# Choose to use a config
+config_path = '/code/dino_configs/dino.py'
+# Setup a checkpoint file to load
+checkpoint = '/code/checkpoints/best_coco_bbox_mAP_epoch_11_dilated_b_l_k_curr_teach_7+5.pth'
+# Initialize the DetInferencer
+inferencer = DetInferencer(model=config_path, weights=checkpoint, palette='random')
 
 predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint)
 
@@ -354,9 +384,9 @@ class BasicInferTask(InferTask):
                 # Check for cats and remote controls
                 # VERY important: text queries need to be lowercased + end with a dot
                 if "texts" in data:
-                    model_id = "IDEA-Research/grounding-dino-tiny"
-                    processor = AutoProcessor.from_pretrained(model_id)
-                    model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id).to(device)
+                    #model_id = "IDEA-Research/grounding-dino-tiny"
+                    #processor = AutoProcessor.from_pretrained(model_id)
+                    #model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id).to(device)
                     text = data["texts"]#]"a organ. a bone. a heart"
                     logger.info(f"text prompt: {text}")
 
@@ -374,35 +404,40 @@ class BasicInferTask(InferTask):
                     img_np_2d = (img_np_2d - (contrast_center-contrast_window/2))/contrast_window * 255
                     img_np_2d = img_np_2d.astype(np.uint8)
                     img_np_2d = np.stack((img_np_2d,) * 3, axis=-1)
-                    image = Image.fromarray(img_np_2d, mode="RGB")
 
+                    results = inferencer(img_np_2d, texts=text)
+
+                    image = Image.fromarray(img_np_2d, mode="RGB")
                     image.save("/code/2d_slice.jpeg", format="JPEG")
+                    np_bbox = np.array(results['predictions'][0]['bboxes'])
+                    imshow_bboxes(img_np_2d, np_bbox[:2,:], show=False, out_file="/code/2d_slice_bbbox.jpeg")
                     #image_url = "http://images.cocodataset.org/val2017/000000039769.jpg"
                     #image = Image.open(requests.get(image_url, stream=True).raw)
                     # Check for cats and remote controls
                     # VERY important: text queries need to be lowercased + end with a dot
                     #text = "a cat. a remote control."
-                    inputs = processor(images=image, text=text, return_tensors="pt").to(device)
+                #    inputs = processor(images=image, text=text, return_tensors="pt").to(device)
 
-                    logger.info(f"inputs: {inputs}")
+                #    logger.info(f"inputs: {inputs}")
 
-                    with torch.no_grad():
-                        outputs = model(**inputs)
+                #    with torch.no_grad():
+                #        outputs = model(**inputs)
 
 
-                    results = processor.post_process_grounded_object_detection(
-                        outputs,
-                        inputs.input_ids,
-                        box_threshold=0.4,
-                        text_threshold=0.3,
-                        target_sizes=[image.size[::-1]]
-                    )
+                #    results = processor.post_process_grounded_object_detection(
+                #        outputs,
+                #        inputs.input_ids,
+                #        box_threshold=0.4,
+                #        text_threshold=0.3,
+                #        target_sizes=[image.size[::-1]]
+                #    )
                     logger.info(f"text prompt results: {results}")
-                    if len(data['boxes'])==0 and results[0]['boxes'].numel() != 0:
-                        int_list = results[0]['boxes'].cpu().numpy().astype(int).reshape(-1, 2).tolist()
-                        int_list_with_z = [pair + [data['pos_points'][0][2]] for pair in int_list]
+                    if len(data['boxes'])==0 and len(results['predictions'][0]['bboxes']) != 0: # From original Grounding SAM DINO group, results[0]['boxes'].numel()
+                        int_list = [coord for sublist in results['predictions'][0]['bboxes'] for coord in zip(sublist[::2], sublist[1::2])]#results['predictions'][0]['bboxes'] #.cpu().numpy().astype(int).reshape(-1, 2).tolist()
+                        int_list_with_z = [list(pair) + [data['pos_points'][0][2]] for pair in int_list]
                         boxes_text = [int_list_with_z[i:i + 2] for i in range(0, len(int_list_with_z), 2)]
-                        data['boxes']=boxes_text
+                        logger.info(f"boxes from text: {boxes_text}")
+                        data['boxes']=boxes_text[:2]
 
                 inference_state = predictor.init_state(video_path=data['image'], clip_low=contrast_center-contrast_window/2, clip_high=contrast_center+contrast_window/2)
             else:    

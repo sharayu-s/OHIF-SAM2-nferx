@@ -207,6 +207,7 @@ def run_inference(
         
         image_files = glob('{}/*'.format(image_path))
         dcm_img_sample = dcmread(image_files[0], stop_before_pixels=True)
+        image_series_desc=""
         if 0x0008103e in dcm_img_sample.keys():
             image_series_desc = dcm_img_sample[0x0008103e].value
         image_series_desc = "SAM2_"+ image_series_desc
