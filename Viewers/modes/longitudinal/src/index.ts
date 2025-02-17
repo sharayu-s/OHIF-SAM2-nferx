@@ -3,6 +3,7 @@ import i18n from 'i18next';
 import { id } from './id';
 import initToolGroups from './initToolGroups';
 import toolbarButtons from './toolbarButtons';
+import segmentationButtons from '../../segmentation/src/segmentationButtons';
 import moreTools from './moreTools';
 import { performCustomizations } from './customizations';
 
@@ -102,6 +103,7 @@ function modeFactory({ modeConfiguration }) {
       initToolGroups(extensionManager, toolGroupService, commandsManager, this.labelConfig);
 
       toolbarService.addButtons([...toolbarButtons, ...moreTools]);
+      toolbarService.addButtons(segmentationButtons);
       toolbarService.createButtonSection('primary', [
         'MeasurementTools',
         'Zoom',

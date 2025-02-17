@@ -18,7 +18,13 @@
 
 [![OHIF-SAM2 Demo](https://img.youtube.com/vi/oNDI-WBMWC0/0.jpg)](https://youtu.be/oNDI-WBMWC0)
 
-- Prompts (Positive, Negative Points and Bounding Boxes) are supported.
+[![Text prompt Demo](https://img.youtube.com/vi/lCZE3y52nec/0.jpg)](https://youtu.be/lCZE3y52nec)
+
+## Highlights
+
+- All prompts (Positive, Negative Points and Bounding Boxes) from SAM2 are supported. 
+
+- Text prompt is additionally supported thanks to [GroundingDino](https://github.com/IDEA-Research/GroundingDINO) and [mmDetection](https://github.com/open-mmlab/mmdetection) Team.
 
 - Two SAM2 buttons are available: SAM2_one (faster) for the slices where prompts are given, SAM2 for all slices via propagation.
 
@@ -26,15 +32,16 @@
 
 ## Updates
 
+- Integrated Text prompt
+
 - OHIF upgrade: 3.10-beta.48, cornerstone 2.0 -> Support partially 3D segmentation rendering
 
 - Fixed flipping segmentation issue
 
+
 ## Next steps
 
 - Support SAM2 for any label anytime: Currently, if a user pass to the next Obj, the user cannot reuse SAM2 for the old label, only manually edit
-
-- Integrate Text prompt
 
 ## (potential) FAQ
 
@@ -49,7 +56,7 @@
 ```bibtex
 @article{jcho2024ohifsam2,
   title={OHIF-SAM2: Accelerating Radiology Workflows with Segment Anything Model 2},
-  author={Cho, Jaeyoung and Liu, Jingyu and Schlamp, Kai and Rastogi, Aditya and Vollmuth, Philipp},
+  author={Cho, Jaeyoung and Rastogi, Aditya and Liu, Jingyu and Schlamp, Kai and Vollmuth, Philipp},
   journal={TechRxiv preprint techrxiv.173387978.85520380},
   url={https://www.techrxiv.org/users/868002/articles/1248561-ohif-sam2-accelerating-radiology-workflows-with-segment-anything-model-2},
   year={2024}

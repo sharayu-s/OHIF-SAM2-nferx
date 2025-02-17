@@ -17,7 +17,7 @@ export const performCustomizations = customizationService => {
     // To disable editing in the SegmentationTable
     {
       id: 'PanelSegmentation.disableEditing',
-      disableEditing: true,
+      disableEditing: false,
     },
     // to only show current study in the panel study browser
     // {

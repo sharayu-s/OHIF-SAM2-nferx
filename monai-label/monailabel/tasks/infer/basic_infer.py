@@ -410,7 +410,7 @@ class BasicInferTask(InferTask):
                     image = Image.fromarray(img_np_2d, mode="RGB")
                     image.save("/code/2d_slice.jpeg", format="JPEG")
                     np_bbox = np.array(results['predictions'][0]['bboxes'])
-                    imshow_bboxes(img_np_2d, np_bbox[:2,:], show=False, out_file="/code/2d_slice_bbbox.jpeg")
+                    imshow_bboxes(img_np_2d, np_bbox[:1,:], show=False, out_file="/code/2d_slice_bbbox.jpeg")
                     #image_url = "http://images.cocodataset.org/val2017/000000039769.jpg"
                     #image = Image.open(requests.get(image_url, stream=True).raw)
                     # Check for cats and remote controls
@@ -437,7 +437,7 @@ class BasicInferTask(InferTask):
                         int_list_with_z = [list(pair) + [data['pos_points'][0][2]] for pair in int_list]
                         boxes_text = [int_list_with_z[i:i + 2] for i in range(0, len(int_list_with_z), 2)]
                         logger.info(f"boxes from text: {boxes_text}")
-                        data['boxes']=boxes_text[:2]
+                        data['boxes']=boxes_text[:1]
 
                 inference_state = predictor.init_state(video_path=data['image'], clip_low=contrast_center-contrast_window/2, clip_high=contrast_center+contrast_window/2)
             else:    
