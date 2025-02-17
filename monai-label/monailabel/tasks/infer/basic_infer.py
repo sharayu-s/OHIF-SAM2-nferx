@@ -71,7 +71,7 @@ tokenizer.save_pretrained("code/bert-base-uncased")
 # Choose to use a config
 config_path = '/code/dino_configs/dino.py'
 # Setup a checkpoint file to load
-checkpoint = '/code/checkpoints/best_coco_bbox_mAP_epoch_11_dilated_b_l_k_curr_teach_7+5.pth'
+checkpoint = '/code/checkpoints/grounding_dino_swin-t_pretrain_obj365_goldg_grit9m_v3det_20231204_095047-b448804b.pth'
 # Initialize the DetInferencer
 inferencer = DetInferencer(model=config_path, weights=checkpoint, palette='random')
 

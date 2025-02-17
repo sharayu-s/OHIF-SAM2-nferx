@@ -49,7 +49,7 @@ def dicom_to_nifti(series_dir, is_seg=False):
             #reverse=True
             #)
             reader.SetFileNames(dicom_names)
-            reader.SetOutputPixelType(SimpleITK.sitkUInt16) 
+            #reader.SetOutputPixelType(SimpleITK.sitkUInt16) 
             image = reader.Execute()
         else:
             dicom_names = (
@@ -59,7 +59,7 @@ def dicom_to_nifti(series_dir, is_seg=False):
             file_reader = SimpleITK.ImageFileReader()
             file_reader.SetImageIO("GDCMImageIO")
             file_reader.SetFileName(dicom_names)
-            file_reader.SetOutputPixelType(SimpleITK.sitkUInt16) 
+            #file_reader.SetOutputPixelType(SimpleITK.sitkUInt16) 
             image = file_reader.Execute()
 
         logger.info(f"Image size: {image.GetSize()}")
