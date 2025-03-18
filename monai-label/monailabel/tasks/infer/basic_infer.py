@@ -383,7 +383,7 @@ class BasicInferTask(InferTask):
 
                 # Check for cats and remote controls
                 # VERY important: text queries need to be lowercased + end with a dot
-                if "texts" in data:
+                if len(data['texts'])==1 and data['texts'][0]!='':
                     #model_id = "IDEA-Research/grounding-dino-tiny"
                     #processor = AutoProcessor.from_pretrained(model_id)
                     #model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id).to(device)
