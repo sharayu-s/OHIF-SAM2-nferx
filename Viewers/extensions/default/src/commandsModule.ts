@@ -510,6 +510,10 @@ const commandsModule = ({
 
       let box_prompts = bd_boxes.map(e => { return [e.at(0).pointIJK, e.at(-1).pointIJK] })
 
+      const text_prompts = Array.from(services.measurementService.measurements)
+      .filter(e => { return e[1].toolName === 'Probe' })
+      .map(e => { return e[1].label })
+
       let url = `/monai/infer/segmentation?image=${currentDisplaySets.SeriesInstanceUID}&output=dicom_seg`;
       let params = {
         largest_cc: false,
@@ -522,6 +526,7 @@ const commandsModule = ({
         pos_points: pos_points,
         neg_points: neg_points,
         boxes: box_prompts,
+        texts: text_prompts,
         one: true,
       };
 

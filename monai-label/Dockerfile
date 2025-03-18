@@ -38,9 +38,9 @@ ENV WEIGHTS_URL="https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_h
 
 RUN wget --directory-prefix ${WEIGHTS_DIR} ${WEIGHTS_URL}
 
-ENV GD_URL="https://download.openmmlab.com/mmdetection/v3.0/mm_grounding_dino/grounding_dino_swin-t_pretrain_obj365_goldg_grit9m_v3det/grounding_dino_swin-t_pretrain_obj365_goldg_grit9m_v3det_20231204_095047-b448804b.pth"
+#ENV GD_URL="https://download.openmmlab.com/mmdetection/v3.0/mm_grounding_dino/grounding_dino_swin-t_pretrain_obj365_goldg_grit9m_v3det/grounding_dino_swin-t_pretrain_obj365_goldg_grit9m_v3det_20231204_095047-b448804b.pth"
 
-RUN wget --directory-prefix ${WEIGHTS_DIR} ${GD_URL}
+#RUN wget --directory-prefix ${WEIGHTS_DIR} ${GD_URL}
 
 RUN rm -rf /usr/local/lib/python3.10/dist-packages/dicomweb_client/web.py
 
