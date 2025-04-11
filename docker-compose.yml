@@ -18,7 +18,7 @@ services:
       - ./Viewers/platform/app/.recipes/Nginx-Orthanc/logs/nginx:/var/logs/nginx
     ports:
       - '1025:1025' # SSL
-      - '80:1026' # Web
+      - '1026:1026' # Web
     depends_on:
       #   - keycloak
       - orthanc
