@@ -1,6 +1,6 @@
 # OHIF-SAM2
 
-[Paper](https://www.techrxiv.org/users/868002/articles/1248561-ohif-sam2-accelerating-radiology-workflows-with-segment-anything-model-2)
+[Paper, ISBI 2025](https://ieeexplore.ieee.org/document/10981119)
 
 ## Prerequisite
 
@@ -54,11 +54,14 @@
 ## How to Cite
 
 ```bibtex
-@article{jcho2024ohifsam2,
-  title={OHIF-SAM2: Accelerating Radiology Workflows with Segment Anything Model 2},
+@INPROCEEDINGS{10981119,
   author={Cho, Jaeyoung and Rastogi, Aditya and Liu, Jingyu and Schlamp, Kai and Vollmuth, Philipp},
-  journal={TechRxiv preprint techrxiv.173387978.85520380},
-  url={https://www.techrxiv.org/users/868002/articles/1248561-ohif-sam2-accelerating-radiology-workflows-with-segment-anything-model-2},
-  year={2024}
-}
+  booktitle={2025 IEEE 22nd International Symposium on Biomedical Imaging (ISBI)}, 
+  title={OHIF -SAM2: Accelerating Radiology Workflows with Meta Segment Anything Model 2}, 
+  year={2025},
+  volume={},
+  number={},
+  pages={1-5},
+  keywords={Image segmentation;Limiting;Grounding;Foundation models;Biological system modeling;Radiology;Biomedical imaging;Web-Based Medical Imaging;Foundation Model;Segmentation;Artificial Intelligence},
+  doi={10.1109/ISBI60581.2025.10981119}}
 ```
