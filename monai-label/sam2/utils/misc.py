@@ -329,93 +329,65 @@ def load_medical_slices(
     clip_high=None
 ):
     """
-
+    Load medical image slices, handling both 2D and 3D images.
     """
-    #if isinstance(video_path, str) and os.path.isdir(video_path):
-    #    jpg_folder = video_path
-    #else:
-    #    raise NotImplementedError("Only JPEG frames are supported at this moment")
-
     img = sitk.ReadImage(video_path)
-    img_z = img.GetSize()[2]
-    img_y = img.GetSize()[1]
-    img_x = img.GetSize()[0]
+    size = img.GetSize()
+    
+    # Handle both 2D and 3D images
+    img_x = size[0]
+    img_y = size[1]
+    img_z = 1 if len(size) == 2 else size[2]  # Default to 1 slice for 2D images
+    
+    # Create reference image for resampling
     new_size = [1024, 1024, img_z]
     reference_image = sitk.Image(new_size, img.GetPixelIDValue())
     reference_image.SetOrigin(img.GetOrigin())
     reference_image.SetDirection(img.GetDirection())
-    reference_image.SetSpacing(
-        [
-            sz * spc / nsz
-            for nsz, sz, spc in zip(new_size, img.GetSize(), img.GetSpacing())
-        ]
-    )
+    
+    # Calculate spacing based on dimensionality
+    if len(size) == 2:
+        orig_spacing = list(img.GetSpacing()) + [1.0]  # Add Z spacing for 2D
+        orig_size = list(size) + [1]  # Add Z dimension for 2D
+    else:
+        orig_spacing = img.GetSpacing()
+        orig_size = size
+        
+    reference_spacing = [
+        sz * spc / nsz
+        for nsz, sz, spc in zip(new_size, orig_size, orig_spacing)
+    ]
+    reference_image.SetSpacing(reference_spacing)
 
-    # Resample without any smoothing.
-    #sitk.Show(sitk.Resample(grid_image, reference_image), "resampled without smoothing")
-    img = sitk.Resample(img, reference_image)#, centered_transform, sitk.sitkLinear, 0.0)
+    # Resample image
+    img = sitk.Resample(img, reference_image)
     img_npy = sitk.GetArrayFromImage(img)
+    
+    # Ensure 3D shape for 2D images
+    if len(img_npy.shape) == 2:
+        img_npy = img_npy[np.newaxis, ...]  # Add Z dimension
+    
+    file_name = os.path.basename(video_path)
+    frame_names = [f"{file_name}_{i}" for i in range(img_z)]
 
-
-
-    #img_npy = img_npy.resize((512, 512))
-
-    file_name = video_path.split('/')[-1]
-
-    frame_names = []
-
-    for i in range(img_z):
-        frame_names.append(f"{file_name}_{i}")
-    #frame_names = [
-    #    p
-    #    for p in os.listdir(jpg_folder)
-    #    if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
-    #]
-    #frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
-    num_frames = len(frame_names)
-    if num_frames == 0:
-        raise RuntimeError(f"no images found in {jpg_folder}")
-    #For CT normalization percentile (0.5, 99.5)
+    # Normalize image data
     img_npy = img_npy.astype(float)
-    percentile_00_5,percentile_99_5 = np.percentile(img_npy, np.array((0.5, 99.5)))
-
-    if clip_low !=None and clip_high != None:
+    if clip_low is not None and clip_high is not None:
         np.clip(img_npy, clip_low, clip_high, out=img_npy)    
     else:
+        percentile_00_5, percentile_99_5 = np.percentile(img_npy, [0.5, 99.5])
         np.clip(img_npy, percentile_00_5, percentile_99_5, out=img_npy)
     
     std_np = np.std(img_npy)
     mean_np = np.mean(img_npy)
 
+    # Convert to torch tensor and expand channels
     images = torch.from_numpy(img_npy)
     images = images.to(torch.float32)
-    images = torch.unsqueeze(images, 1).expand(-1, 3,-1,-1).clone()
+    images = torch.unsqueeze(images, 1).expand(-1, 3, -1, -1).clone()
 
-    video_height = img_y
-    video_width = img_x
+    # Normalize
+    images -= mean_np
+    images /= std_np
 
-    # normalize by mean and std
-    images -= mean_np#torch.mean(images)
-    images /= std_np#torch.std(images)
-    #images = torch.zeros(num_frames, 3, img_y, img_x, dtype=torch.float32)
-    #img_paths = [os.path.join(jpg_folder, frame_name) for frame_name in frame_names]
-    #img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
-    #img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
-
-    #if async_loading_frames:
-    #    lazy_images = AsyncVideoFrameLoader(
-    #        img_paths, image_size, offload_video_to_cpu, img_mean, img_std
-    #    )
-    #    return lazy_images, lazy_images.video_height, lazy_images.video_width
-
-    
-    #for n, img_path in enumerate(tqdm(img_paths, desc="frame loading (JPEG)")):
-    #    images[n], video_height, video_width = _load_img_as_tensor(img_path, image_size)
-    #if not offload_video_to_cpu:
-    #    images = images.cuda()
-    #    img_mean = img_mean.cuda()
-    #    img_std = img_std.cuda()
-    ## normalize by mean and std
-    #images -= img_mean
-    #images /= img_std
-    return images, video_height, video_width
+    return images, img_y, img_x

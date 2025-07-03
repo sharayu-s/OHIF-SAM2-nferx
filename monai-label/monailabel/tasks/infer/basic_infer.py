@@ -346,13 +346,16 @@ class BasicInferTask(InferTask):
 
         
         if "pos_points" in data:
-
             result_json["pos_points"]=data["pos_points"]
             #SAM2
             img = sitk.ReadImage(data['image'])
-            len_z = img.GetSize()[2]
-            len_y = img.GetSize()[1]
-            len_x = img.GetSize()[0]
+            img_size = img.GetSize()
+            
+            # Handle both 2D and 3D images
+            len_x = img_size[0]
+            len_y = img_size[1]
+            len_z = 1 if len(img_size) == 2 else img_size[2]  # Default to 1 slice for 2D images
+            
             logger.info(f"len Z Y X: {len_z}, {len_y}, {len_x}")
             
             file_name = data['image'].split('/')[-1]
