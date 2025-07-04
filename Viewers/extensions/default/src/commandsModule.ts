@@ -664,8 +664,71 @@ const commandsModule = ({
           },
         })
         .then(function (response) {
+          console.log('🟡 SAM2 command - Response received:', response);
+          console.log('🟡 Response status:', response.status);
+          console.log('🟡 Response headers:', response.headers);
           console.debug(response);
+          
           if (response.status === 200) {
+            // Check if this is an ultrasound file download response
+            const isUltrasoundDownload = response.headers && (
+              response.headers['x-modality'] === 'ultrasound' ||
+              response.headers['X-Modality'] === 'ultrasound' ||
+              response.headers['x-segmentation-format'] === 'nifti' ||
+              response.headers['X-Segmentation-Format'] === 'nifti'
+            );
+            
+            if (isUltrasoundDownload) {
+              console.log('🟡 SAM2 command - Ultrasound segmentation detected - triggering file download');
+              
+              // Handle different response data formats
+              let blobData;
+              if (response.data instanceof ArrayBuffer) {
+                blobData = response.data;
+              } else if (response.data instanceof Uint8Array) {
+                blobData = response.data.buffer;
+              } else if (typeof response.data === 'string') {
+                // Convert string to ArrayBuffer
+                const encoder = new TextEncoder();
+                blobData = encoder.encode(response.data).buffer;
+              } else {
+                console.error('Unexpected response data type:', typeof response.data);
+                blobData = response.data;
+              }
+              
+              const blob = new Blob([blobData], { type: 'application/octet-stream' });
+              const filename = 'ultrasound_segmentation.nii.gz';
+              
+              console.log('🟡 SAM2 command - Created blob:', blob);
+              console.log('🟡 SAM2 command - Blob size:', blob.size);
+              
+              // Trigger file download
+              if (window.navigator.msSaveOrOpenBlob) {
+                window.navigator.msSaveOrOpenBlob(blob, filename);
+              } else {
+                const a = document.createElement('a');
+                document.body.appendChild(a);
+                const url = window.URL.createObjectURL(blob);
+                a.href = url;
+                a.download = filename;
+                a.click();
+                setTimeout(() => {
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                }, 0);
+              }
+              
+              uiNotificationService.show({
+                title: 'MONAI Label',
+                message: 'Ultrasound segmentation downloaded as NIfTI file',
+                type: 'success',
+                duration: 5000,
+              });
+              
+              return response; // Exit early for ultrasound downloads
+            }
+            
+            // Normal DICOM segmentation processing for non-ultrasound images
             uiNotificationService.show({
               title: 'MONAI Label',
               message: 'Run Segmentation - Successful',

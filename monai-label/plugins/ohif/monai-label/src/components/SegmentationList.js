@@ -69,6 +69,18 @@ export default class SegmentationList extends Component {
 
     this.notification = UINotificationService.create({});
     this.uiModelService = UIModalService.create({});
+    
+    // Add null check for viewConstants
+    if (!this.props.viewConstants) {
+      this.state = {
+        element: null,
+        segments: [],
+        selectedSegmentId: null,
+        header: null,
+      };
+      return;
+    }
+    
     const { element } = this.props.viewConstants;
     const labelmaps = getLabelMaps(element);
     const segments = flattenLabelmaps(labelmaps);
@@ -380,10 +392,74 @@ export default class SegmentationList extends Component {
     overlap,
     selectedIndex
   ) => {
+    console.log('🟢 SegmentationList.updateView - STARTING');
+    console.debug('SegmentationList.updateView called with:', {
+      response,
+      labels,
+      operation,
+      slice,
+      overlap,
+      selectedIndex
+    });
+
     const { element, numberOfFrames } = this.props.viewConstants;
     if (!selectedIndex) {
       selectedIndex = this.getSelectedActiveIndex();
     }
+    
+    // Check if this is an ultrasound file download response
+    console.debug('Response headers:', response.headers);
+    console.debug('Response data type:', typeof response.data);
+    console.debug('Response data length:', response.data ? response.data.length : 'null');
+    
+    const isUltrasoundDownload = response.headers && (
+      response.headers['x-modality'] === 'ultrasound' ||
+      response.headers['X-Modality'] === 'ultrasound' ||
+      response.headers['x-segmentation-format'] === 'nifti' ||
+      response.headers['X-Segmentation-Format'] === 'nifti'
+    );
+    
+    if (isUltrasoundDownload) {
+      // This is an ultrasound segmentation - trigger file download
+      console.info('Ultrasound segmentation detected - triggering file download');
+      console.debug('Response data for ultrasound:', response.data);
+      
+      // Handle different response data formats
+      let blobData;
+      if (response.data instanceof ArrayBuffer) {
+        blobData = response.data;
+      } else if (response.data instanceof Uint8Array) {
+        blobData = response.data.buffer;
+      } else if (typeof response.data === 'string') {
+        // Convert string to ArrayBuffer
+        const encoder = new TextEncoder();
+        blobData = encoder.encode(response.data).buffer;
+      } else {
+        console.error('Unexpected response data type:', typeof response.data);
+        blobData = response.data;
+      }
+      
+      const blob = new Blob([blobData], { type: 'application/octet-stream' });
+      const filename = 'ultrasound_segmentation.nii.gz';
+      
+      console.debug('Created blob:', blob);
+      console.debug('Blob size:', blob.size);
+      
+      // Use the existing saveFile method from SegmentationReader
+      SegmentationReader.saveFile(blob, filename);
+      
+      // Show notification about the download
+      this.notification.show({
+        title: 'MONAI Label',
+        message: 'Ultrasound segmentation downloaded as NIfTI file',
+        type: 'success',
+        duration: 5000,
+      });
+      
+      return; // Exit early - don't try to parse as NRRD
+    }
+    
+    // Normal NRRD processing for non-ultrasound images
     const { header, image } = SegmentationReader.parseNrrdData(response.data);
     this.setState({ header: header });
     console.debug(selectedIndex);
@@ -444,6 +520,17 @@ export default class SegmentationList extends Component {
   }
 
   render() {
+    // If viewConstants is null, show a simple message
+    if (!this.props.viewConstants) {
+      return (
+        <div className="segmentationList">
+          <div style={{ padding: '10px', textAlign: 'center' }}>
+            <p>Please select a DICOM series to view segmentation options.</p>
+          </div>
+        </div>
+      );
+    }
+
     const segmentId = this.state.selectedSegmentId
       ? this.state.selectedSegmentId
       : getFirstSegmentId(this.props.viewConstants.element);

@@ -40,6 +40,7 @@ export default class SmartEdit extends BaseTab {
   };
 
   onDeepgrow = async () => {
+    console.log('🔵 SmartEdit.onDeepgrow - STARTING');
     const { info, viewConstants } = this.props;
     const image = viewConstants.SeriesInstanceUID;
     const model = this.modelSelector.current.currentModel();

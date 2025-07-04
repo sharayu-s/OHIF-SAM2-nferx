@@ -32,6 +32,7 @@ export default class AutoSegmentation extends BaseTab {
   };
 
   onSegmentation = async () => {
+    console.log('🔴 AutoSegmentation.onSegmentation - STARTING');
     const nid = this.notification.show({
       title: 'MONAI Label',
       message: 'Running Auto-Segmentation...',
@@ -47,10 +48,23 @@ export default class AutoSegmentation extends BaseTab {
     const params =
       config && config.infer && config.infer[model] ? config.infer[model] : {};
 
+    console.debug('AutoSegmentation.onSegmentation called with:', {
+      image,
+      model,
+      config,
+      params,
+      viewConstants
+    });
+
     const labels = info.models[model].labels;
     const response = await this.props
       .client()
       .segmentation(model, image, params);
+
+    console.log('🔴 AutoSegmentation - Response received:', response);
+    console.log('🔴 Response status:', response.status);
+    console.log('🔴 Response headers:', response.headers);
+    console.log('🔴 Response data type:', typeof response.data);
 
     // Bug:: Notification Service on show doesn't return id
     if (!nid) {
@@ -60,6 +74,7 @@ export default class AutoSegmentation extends BaseTab {
     }
 
     if (response.status !== 200) {
+      console.log('🔴 AutoSegmentation - FAILED with status:', response.status);
       this.notification.show({
         title: 'MONAI Label',
         message: 'Failed to Run Segmentation',
@@ -67,6 +82,7 @@ export default class AutoSegmentation extends BaseTab {
         duration: 5000,
       });
     } else {
+      console.log('🔴 AutoSegmentation - SUCCESS - calling updateView');
       this.notification.show({
         title: 'MONAI Label',
         message: 'Run Segmentation - Successful',
@@ -75,6 +91,7 @@ export default class AutoSegmentation extends BaseTab {
       });
 
       await this.props.updateView(response, labels);
+      console.log('🔴 AutoSegmentation - updateView completed');
     }
   };
 

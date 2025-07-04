@@ -90,17 +90,24 @@ class ResultType(str, Enum):
     json = "json"
     all = "all"
     dicom_seg = "dicom_seg"
+    ultrasound_seg = "ultrasound_seg"
 
 
 def send_response(datastore, result, output, background_tasks):
     res_img = result.get("file") if result.get("file") else result.get("label")
     res_tag = result.get("tag")
     res_json = result.get("params")
+    
+    logger.info(f"send_response called with output={output}, res_img={res_img}")
+    logger.info(f"Result keys: {list(result.keys())}")
 
     if res_img:
         if not os.path.exists(res_img):
+            logger.info(f"File {res_img} does not exist, trying datastore.get_label_uri")
             res_img = datastore.get_label_uri(res_img, res_tag)
+            logger.info(f"Datastore returned: {res_img}")
         else:
+            logger.info(f"File {res_img} exists, adding to background cleanup")
             background_tasks.add_task(remove_file, res_img)
 
     if output == "json":
@@ -207,6 +214,39 @@ def run_inference(
         
         image_files = glob('{}/*'.format(image_path))
         dcm_img_sample = dcmread(image_files[0], stop_before_pixels=True)
+        
+        # Check if this is an ultrasound image
+        is_ultrasound = False
+        if hasattr(dcm_img_sample, 'Modality') and dcm_img_sample.Modality == 'US':
+            is_ultrasound = True
+            logger.info("Detected ultrasound image - using alternative segmentation format")
+        
+        # For ultrasound images, return the segmentation directly instead of DICOM format
+        if is_ultrasound:
+            logger.info("Skipping DICOM segmentation conversion for ultrasound image")
+            logger.info(f"Ultrasound segmentation file: {res_img}")
+            
+            # Verify the file exists
+            if res_img and os.path.exists(res_img):
+                logger.info(f"Ultrasound segmentation file exists and is ready: {res_img}")
+                logger.info("Returning ultrasound segmentation as direct file download")
+                
+                # Return the file directly for download
+                return FileResponse(
+                    res_img, 
+                    media_type="application/octet-stream", 
+                    filename="ultrasound_segmentation.nii.gz",
+                    headers={
+                        "Content-Description": "Ultrasound Segmentation",
+                        "X-Segmentation-Format": "nifti",
+                        "X-Modality": "ultrasound",
+                        "X-Success": "true"
+                    }
+                )
+            else:
+                logger.error(f"Ultrasound segmentation file not found: {res_img}")
+                raise HTTPException(status_code=500, detail=f"Segmentation file not found: {res_img}")
+        
         image_series_desc=""
         if 0x0008103e in dcm_img_sample.keys():
             image_series_desc = dcm_img_sample[0x0008103e].value
@@ -267,6 +307,19 @@ def run_inference(
 
         series_id = dicom_web_upload_dcm(dicom_seg_file, instance.datastore()._client)
         result["dicom_seg"] = series_id
+
+    # Ultrasound Segmentation - optimized for ultrasound images
+    if output == "ultrasound_seg":
+        if not isinstance(instance.datastore(), DICOMWebDatastore):
+            raise HTTPException(status_code=500, detail="Ultrasound segmentation is not supported in a non-DICOM datastore")
+        
+        res_img = result.get("file") if result.get("file") else result.get("label")
+        
+        # Return the segmentation in NIfTI format with metadata
+        ultrasound_response = create_ultrasound_segmentation_response(res_img, "nifti")
+        result.update(ultrasound_response)
+        
+        logger.info(f"Ultrasound segmentation completed: {res_img}")
 
     return send_response(instance.datastore(), result, output, background_tasks)
 
@@ -337,6 +390,26 @@ def save_combined_segmentation(combined_pixel_array, all_segments, combined_fram
     packed_pixel_data = np.packbits(combined_pixel_array.astype(np.uint8), axis=-1)
     combined_segmentation.PixelData = packed_pixel_data.tobytes()
     return combined_segmentation
+
+
+def create_ultrasound_segmentation_response(segmentation_file, output_format="nifti"):
+    """
+    Creates a response for ultrasound segmentation in various formats.
+    """
+    response_data = {
+        "segmentation_file": segmentation_file,
+        "format": output_format,
+        "message": f"Ultrasound segmentation successful - returned as {output_format.upper()} format",
+        "modality": "ultrasound",
+        "success": True
+    }
+    
+    if output_format == "nifti":
+        response_data["instructions"] = "Use this NIfTI file for visualization or further processing"
+        response_data["viewer_compatible"] = False
+        response_data["download_recommended"] = True
+    
+    return response_data
 
 @router.post("/{model}", summary=f"{RBAC_USER}Run Inference for supported model")
 async def api_run_inference(

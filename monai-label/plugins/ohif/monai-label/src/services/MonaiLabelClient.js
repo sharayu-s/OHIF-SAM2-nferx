@@ -26,6 +26,7 @@ export default class MonaiLabelClient {
   async segmentation(model, image, params = {}, label = null) {
     // label is used to send label volumes, e.g. scribbles,
     // that are to be used during segmentation
+    console.debug('MonaiLabelClient.segmentation called with:', { model, image, params, label });
     return this.infer(model, image, params, label);
   }
 
@@ -46,6 +47,16 @@ export default class MonaiLabelClient {
       params.result_dtype = 'uint16';
       params.result_compress = false;
     }
+
+    console.debug('MonaiLabelClient.infer called with:', { 
+      model, 
+      image, 
+      params, 
+      label, 
+      result_extension,
+      url,
+      server_url: this.server_url.toString()
+    });
 
     return await MonaiLabelClient.api_post(
       url,
@@ -169,6 +180,8 @@ export default class MonaiLabelClient {
   }
 
   static api_post_data(url, data, responseType) {
+    console.log('🟡 MonaiLabelClient.api_post_data - URL:', url);
+    console.log('🟡 MonaiLabelClient.api_post_data - responseType:', responseType);
     console.debug('POST:: ' + url);
     return axios
       .post(url, data, {
@@ -178,10 +191,14 @@ export default class MonaiLabelClient {
         },
       })
       .then(function(response) {
+        console.log('🟡 MonaiLabelClient.api_post_data - Response received');
+        console.log('🟡 Response status:', response.status);
+        console.log('🟡 Response headers:', response.headers);
         console.debug(response);
         return response;
       })
       .catch(function(error) {
+        console.log('🟡 MonaiLabelClient.api_post_data - ERROR:', error);
         return error;
       })
       .finally(function() {});

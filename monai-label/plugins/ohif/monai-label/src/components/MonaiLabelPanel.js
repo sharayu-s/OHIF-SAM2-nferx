@@ -46,6 +46,11 @@ export default class MonaiLabelPanel extends Component {
     this.viewConstants = this.getViewConstants(viewports, studies, activeIndex);
     console.debug(this.viewConstants);
 
+    // If viewConstants is null, log an error
+    if (!this.viewConstants) {
+      console.error('Failed to initialize view constants - viewport or study data may be missing');
+    }
+
     this.notification = UINotificationService.create({});
     this.segmentationList = React.createRef();
     this.settings = React.createRef();
@@ -79,7 +84,15 @@ export default class MonaiLabelPanel extends Component {
 
   getViewConstants = (viewports, studies, activeIndex) => {
     const viewport = viewports[activeIndex];
-    const { PatientID } = studies[activeIndex];
+    const study = studies[activeIndex];
+    
+    // Add null checks to prevent errors
+    if (!viewport || !study) {
+      console.warn('Invalid viewport or study at index:', activeIndex);
+      return null;
+    }
+    
+    const { PatientID } = study;
 
     const {
       StudyInstanceUID,
@@ -241,6 +254,20 @@ export default class MonaiLabelPanel extends Component {
   };
 
   render() {
+    // If viewConstants is null, show an error state
+    if (!this.viewConstants) {
+      return (
+        <div className="monaiLabelPanel">
+          <div style={{ padding: '20px', textAlign: 'center' }}>
+            <p style={{ color: 'red' }}>
+              Error: Unable to initialize MONAI Label Panel. 
+              Please ensure a valid DICOM series is selected.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="monaiLabelPanel">
         <SegmentationList

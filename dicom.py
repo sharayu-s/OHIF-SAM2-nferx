@@ -113,7 +113,7 @@ def dicom_web_download_series(study_id, series_id, save_dir, client: DICOMwebCli
 def dicom_web_upload_dcm(input_file, client: DICOMwebClient):
     start = time.time()
     try:
-        dataset = dcmread(input_file)
+    dataset = dcmread(input_file)
     except Exception as e:
         logger.warning(f"Could not read DICOM file {input_file}: {e}")
         # Try with force=True for problematic files

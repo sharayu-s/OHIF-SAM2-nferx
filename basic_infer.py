@@ -379,7 +379,7 @@ class BasicInferTask(InferTask):
                     break
             
             if image_files:
-                dcm_img_sample = dcmread(image_files[0], stop_before_pixels=True)
+            dcm_img_sample = dcmread(image_files[0], stop_before_pixels=True)
             else:
                 # Fallback: create a minimal DICOM-like object with default values
                 logger.warning(f"No DICOM files found in {dicom_dir}, using default contrast values")
@@ -492,8 +492,8 @@ class BasicInferTask(InferTask):
                     dicom_filenames = sorted(image_files)
                 
                 if len(dicom_filenames) >= 2:
-                    dcm_img_sample = dcmread(dicom_filenames[0], stop_before_pixels=True)
-                    dcm_img_sample_2 = dcmread(dicom_filenames[1], stop_before_pixels=True)
+                dcm_img_sample = dcmread(dicom_filenames[0], stop_before_pixels=True)
+                dcm_img_sample_2 = dcmread(dicom_filenames[1], stop_before_pixels=True)
                 elif len(dicom_filenames) == 1:
                     dcm_img_sample = dcmread(dicom_filenames[0], stop_before_pixels=True)
                     dcm_img_sample_2 = dcm_img_sample  # Use the same file as fallback

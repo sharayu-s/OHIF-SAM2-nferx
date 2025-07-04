@@ -363,7 +363,24 @@ class BasicInferTask(InferTask):
             for i in range(len_z):
                 frame_names.append(f"{file_name}_{i}")
             dicom_dir = data['image'].split('.nii.gz')[0]
+            
+            # For ultrasound, look for DICOM files in the parent directory
             image_files = glob('{}/*'.format(dicom_dir))
+            if len(image_files) == 0:
+                # Try parent directory for ultrasound cases
+                parent_dir = os.path.dirname(data['image'])
+                image_files = glob('{}/*.dcm'.format(parent_dir))
+                if len(image_files) == 0:
+                    # If still no files, try looking for any files in parent directory
+                    image_files = glob('{}/*'.format(parent_dir))
+                    # Filter for DICOM files
+                    image_files = [f for f in image_files if f.endswith('.dcm') or (not f.endswith('.nii.gz') and not f.endswith('.json'))]
+                dicom_dir = parent_dir
+            
+            if len(image_files) == 0:
+                logger.error(f"❌ No DICOM files found in {dicom_dir} or parent directories")
+                raise FileNotFoundError(f"No DICOM files found for ultrasound processing")
+            
             dcm_img_sample = dcmread(image_files[0], stop_before_pixels=True)
 
             contrast_center = None
@@ -524,17 +541,40 @@ class BasicInferTask(InferTask):
                     )
 
                 if "one" in data:
+                    # Debug: Check mask logits before thresholding
+                    for i, out_obj_id in enumerate(out_obj_ids):
+                        raw_logits = out_mask_logits[i].cpu().numpy()
+                        logger.info(f"🔍 Frame {ann_frame_idx} raw logits stats: min={np.min(raw_logits):.4f}, max={np.max(raw_logits):.4f}, mean={np.mean(raw_logits):.4f}")
+                        thresholded = (out_mask_logits[i] > 0.0).cpu().numpy()
+                        logger.info(f"🔍 Frame {ann_frame_idx} after >0.0 threshold: {np.sum(thresholded)} pixels")
+                        
                     video_segments[ann_frame_idx] = {
                         out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
                         for i, out_obj_id in enumerate(out_obj_ids)
                     }
             if "one" not in data:
                 for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state, reverse=False):
+                    # Debug: Check mask logits for propagated frames
+                    if out_frame_idx % 100 == 0:  # Log every 100th frame to avoid spam
+                        for i, out_obj_id in enumerate(out_obj_ids):
+                            raw_logits = out_mask_logits[i].cpu().numpy()
+                            logger.info(f"🔍 Propagated frame {out_frame_idx} raw logits stats: min={np.min(raw_logits):.4f}, max={np.max(raw_logits):.4f}, mean={np.mean(raw_logits):.4f}")
+                            thresholded = (out_mask_logits[i] > 0.0).cpu().numpy()
+                            logger.info(f"🔍 Propagated frame {out_frame_idx} after >0.0 threshold: {np.sum(thresholded)} pixels")
+                            
                     video_segments[out_frame_idx] = {
                         out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
                         for i, out_obj_id in enumerate(out_obj_ids)
                     }
                 for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state, reverse=True):
+                    # Debug: Check mask logits for reverse propagated frames
+                    if out_frame_idx % 100 == 0:  # Log every 100th frame to avoid spam
+                        for i, out_obj_id in enumerate(out_obj_ids):
+                            raw_logits = out_mask_logits[i].cpu().numpy()
+                            logger.info(f"🔍 Reverse frame {out_frame_idx} raw logits stats: min={np.min(raw_logits):.4f}, max={np.max(raw_logits):.4f}, mean={np.mean(raw_logits):.4f}")
+                            thresholded = (out_mask_logits[i] > 0.0).cpu().numpy()
+                            logger.info(f"🔍 Reverse frame {out_frame_idx} after >0.0 threshold: {np.sum(thresholded)} pixels")
+                            
                     video_segments[out_frame_idx] = {
                         out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
                         for i, out_obj_id in enumerate(out_obj_ids)
@@ -543,7 +583,21 @@ class BasicInferTask(InferTask):
             pred = np.zeros((len_z, len_y, len_x))
 
             for i in video_segments.keys():
-                pred[i]=video_segments[i][1][0].astype(int)
+                # Debug: Check the actual values in the segmentation mask
+                mask_values = video_segments[i][1][0]
+                logger.info(f"🔍 Frame {i} mask stats: min={np.min(mask_values):.4f}, max={np.max(mask_values):.4f}, mean={np.mean(mask_values):.4f}")
+                logger.info(f"🔍 Frame {i} mask unique values: {np.unique(mask_values)}")
+                logger.info(f"🔍 Frame {i} mask shape: {mask_values.shape}")
+                
+                # Count non-zero pixels
+                non_zero_count = np.count_nonzero(mask_values)
+                total_pixels = mask_values.size
+                logger.info(f"🔍 Frame {i} non-zero pixels: {non_zero_count}/{total_pixels} ({100*non_zero_count/total_pixels:.2f}%)")
+                
+                # Instead of just converting to int, let's check if we need a different threshold
+                # The current code uses: (out_mask_logits[i] > 0.0) which might be too strict
+                pred[i] = mask_values.astype(int)
+                
             pred_itk = sitk.GetImageFromArray(pred)
             pred_itk.CopyInformation(img)
             
