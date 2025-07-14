@@ -383,6 +383,227 @@ class BasicInferTask(InferTask):
             
             dcm_img_sample = dcmread(image_files[0], stop_before_pixels=True)
 
+            # === ULTRASOUND SEGMENTATION IMPROVEMENTS ===
+            def detect_ultrasound_modality(dcm_sample):
+                """Detect if the DICOM sample is from an ultrasound imaging modality."""
+                try:
+                    if hasattr(dcm_sample, 'Modality') and dcm_sample.Modality == 'US':
+                        return True
+                    # Check for ultrasound-specific tags
+                    ultrasound_tags = ['SequenceOfUltrasoundRegions', 'UltrasoundColorDataPresent', 'TriggerTime', 'HeartRate']
+                    for tag in ultrasound_tags:
+                        if hasattr(dcm_sample, tag):
+                            return True
+                    return False
+                except Exception as e:
+                    logger.warning(f"Error detecting ultrasound modality: {e}")
+                    return False
+
+            def adaptive_threshold_for_ultrasound(mask_logits, frame_idx=None):
+                """Apply adaptive thresholding specifically optimized for ultrasound images."""
+                try:
+                    raw_logits = mask_logits.cpu().numpy()
+                    min_val, max_val, mean_val = np.min(raw_logits), np.max(raw_logits), np.mean(raw_logits)
+                    if frame_idx is not None:
+                        logger.info(f"🔧 Ultrasound adaptive threshold frame {frame_idx}: min={min_val:.4f}, max={max_val:.4f}, mean={mean_val:.4f}")
+                    
+                    # Method 1: Use percentile-based threshold for reasonable variation
+                    if max_val > min_val and (max_val - min_val) > 0.01:
+                        threshold = np.percentile(raw_logits, 75)  # More lenient than 0.0
+                        binary_mask = (raw_logits > threshold).astype(int)
+                        if frame_idx is not None:
+                            logger.info(f"🔧 Using percentile threshold: {threshold:.4f}")
+                    # Method 2: Use mean-based threshold for near-zero values  
+                    elif abs(mean_val) < 0.001:
+                        threshold = mean_val
+                        binary_mask = (raw_logits > threshold).astype(int)
+                        if frame_idx is not None:
+                            logger.info(f"🔧 Using mean-based threshold: {threshold:.4f}")
+                    # Method 3: Use adaptive threshold based on statistics
+                    else:
+                        std_val = np.std(raw_logits)
+                        threshold = mean_val + 0.5 * std_val
+                        binary_mask = (raw_logits > threshold).astype(int)
+                        if frame_idx is not None:
+                            logger.info(f"🔧 Using adaptive threshold: {threshold:.4f}")
+                    
+                    non_zero_count = np.count_nonzero(binary_mask)
+                    total_pixels = binary_mask.size
+                    coverage_percent = 100 * non_zero_count / total_pixels
+                    
+                    if frame_idx is not None:
+                        logger.info(f"🔧 Ultrasound result: {non_zero_count}/{total_pixels} pixels ({coverage_percent:.2f}%)")
+                    
+                    # If coverage too small, try median threshold
+                    if coverage_percent < 0.5:
+                        threshold = np.percentile(raw_logits, 50)
+                        binary_mask = (raw_logits > threshold).astype(int)
+                        new_coverage = 100 * np.count_nonzero(binary_mask) / total_pixels
+                        if frame_idx is not None:
+                            logger.info(f"🔧 Using median threshold: {threshold:.4f} -> {new_coverage:.2f}%")
+                    
+                    # Apply morphological operations to clean up ultrasound artifacts
+                    if coverage_percent > 0.1:  # Only if we have some segmentation
+                        from scipy.ndimage import binary_closing, binary_opening
+                        # Close small gaps (common in ultrasound)
+                        binary_mask = binary_closing(binary_mask, structure=np.ones((3,3)))
+                        # Remove small noise
+                        binary_mask = binary_opening(binary_mask, structure=np.ones((2,2)))
+                        if frame_idx is not None:
+                            logger.info(f"🔧 Applied morphological cleaning")
+                    
+                    return binary_mask
+                except Exception as e:
+                    logger.error(f"Error in adaptive thresholding: {e}")
+                    return (mask_logits > 0.0).cpu().numpy()
+
+            # Detect if this is ultrasound
+            is_ultrasound = detect_ultrasound_modality(dcm_img_sample)
+            if is_ultrasound:
+                logger.info("🩺 ULTRASOUND DETECTED - Using adaptive thresholding for improved segmentation")
+            else:
+                logger.info("📋 Non-ultrasound modality - Using standard thresholding")
+
+            def enhance_ultrasound_image(image_array, frame_idx=None):
+                """Apply ultrasound-specific image enhancements."""
+                try:
+                    # 1. Speckle noise reduction using median filter
+                    from scipy.ndimage import median_filter
+                    enhanced = median_filter(image_array, size=2)
+                    
+                    # 2. Contrast enhancement using CLAHE
+                    from skimage.exposure import equalize_adapthist
+                    enhanced = equalize_adapthist(enhanced, clip_limit=0.02)
+                    
+                    # 3. Edge enhancement for better boundary detection
+                    from skimage.filters import unsharp_mask
+                    enhanced = unsharp_mask(enhanced, radius=1, amount=1.5)
+                    
+                    if frame_idx is not None:
+                        logger.info(f"🔧 Enhanced ultrasound image for frame {frame_idx}")
+                    
+                    return enhanced
+                except Exception as e:
+                    logger.warning(f"Ultrasound enhancement failed: {e}")
+                    return image_array
+
+            def apply_ultrasound_click_guidance(click_coords, image_shape):
+                """Generate multiple clicks around ultrasound anatomical features."""
+                clicks = [click_coords]  # Original click
+                
+                # Add nearby clicks for better ultrasound segmentation
+                offsets = [(-10, -10), (10, 10), (-10, 10), (10, -10)]
+                for dx, dy in offsets:
+                    new_x = max(0, min(image_shape[1] - 1, click_coords[0] + dx))
+                    new_y = max(0, min(image_shape[0] - 1, click_coords[1] + dy))
+                    clicks.append([new_x, new_y, click_coords[2]])
+                
+                logger.info(f"🎯 Generated {len(clicks)} ultrasound-guided clicks")
+                return clicks
+
+            def apply_ultrasound_geometric_constraints(binary_mask, image_shape):
+                """Apply geometric constraints specific to ultrasound imaging."""
+                try:
+                    # 1. Remove segmentation outside ultrasound sector (fan-shaped region)
+                    height, width = image_shape[:2]
+                    y_coords, x_coords = np.mgrid[0:height, 0:width]
+                    
+                    # Typical ultrasound sector: fan shape from top center
+                    sector_center_x = width // 2
+                    sector_top_y = height // 6  # Usually some padding at top
+                    
+                    # Calculate angles and distances
+                    angles = np.arctan2(y_coords - sector_top_y, x_coords - sector_center_x)
+                    distances = np.sqrt((x_coords - sector_center_x)**2 + (y_coords - sector_top_y)**2)
+                    
+                    # Define ultrasound sector boundaries (typical 60-90 degree sector)
+                    max_angle = np.pi / 3  # 60 degrees
+                    max_distance = min(height, width) * 0.8
+                    
+                    # Create sector mask
+                    sector_mask = (np.abs(angles) < max_angle) & (distances < max_distance) & (y_coords > sector_top_y)
+                    
+                    # Apply sector constraint
+                    constrained_mask = binary_mask & sector_mask
+                    
+                    logger.info(f"🔧 Applied ultrasound geometric constraints")
+                    return constrained_mask
+                except Exception as e:
+                    logger.warning(f"Geometric constraint failed: {e}")
+                    return binary_mask
+
+            def apply_ultrasound_frequency_filter(image_array):
+                """Apply frequency domain filtering for ultrasound speckle reduction."""
+                try:
+                    from scipy.fft import fft2, ifft2, fftshift, ifftshift
+                    
+                    # Convert to frequency domain
+                    f_transform = fft2(image_array)
+                    f_shift = fftshift(f_transform)
+                    
+                    # Create bandpass filter (remove very high and very low frequencies)
+                    rows, cols = image_array.shape
+                    crow, ccol = rows // 2, cols // 2
+                    
+                    # Create frequency mask
+                    y, x = np.ogrid[:rows, :cols]
+                    distance = np.sqrt((x - ccol)**2 + (y - crow)**2)
+                    
+                    # Bandpass filter: keep mid-range frequencies
+                    low_cutoff = min(rows, cols) * 0.1
+                    high_cutoff = min(rows, cols) * 0.4
+                    freq_mask = (distance > low_cutoff) & (distance < high_cutoff)
+                    
+                    # Apply filter
+                    f_shift_filtered = f_shift * freq_mask
+                    
+                    # Convert back to spatial domain
+                    f_ishift = ifftshift(f_shift_filtered)
+                    img_filtered = ifft2(f_ishift)
+                    img_filtered = np.real(img_filtered)
+                    
+                    logger.info(f"🔧 Applied frequency domain filtering")
+                    return img_filtered
+                except Exception as e:
+                    logger.warning(f"Frequency filtering failed: {e}")
+                    return image_array
+
+            def ultrasound_region_growing(binary_mask, click_coords, image_shape):
+                """Apply region growing specifically for ultrasound segmentation."""
+                try:
+                    from scipy.ndimage import label, center_of_mass
+                    
+                    # Label connected components
+                    labeled_mask, num_features = label(binary_mask)
+                    
+                    if num_features == 0:
+                        return binary_mask
+                    
+                    # Find the component closest to click point
+                    click_y, click_x = click_coords[1], click_coords[0]
+                    min_distance = float('inf')
+                    selected_component = 0
+                    
+                    for i in range(1, num_features + 1):
+                        component_mask = (labeled_mask == i)
+                        if np.sum(component_mask) > 10:  # Minimum size threshold
+                            com_y, com_x = center_of_mass(component_mask)
+                            distance = np.sqrt((com_x - click_x)**2 + (com_y - click_y)**2)
+                            if distance < min_distance:
+                                min_distance = distance
+                                selected_component = i
+                    
+                    # Return only the selected component
+                    if selected_component > 0:
+                        result_mask = (labeled_mask == selected_component).astype(int)
+                        logger.info(f"🔧 Applied region growing - selected component {selected_component}")
+                        return result_mask
+                    
+                    return binary_mask
+                except Exception as e:
+                    logger.warning(f"Region growing failed: {e}")
+                    return binary_mask
+
             contrast_center = None
             contrast_window = None
             
@@ -545,11 +766,18 @@ class BasicInferTask(InferTask):
                     for i, out_obj_id in enumerate(out_obj_ids):
                         raw_logits = out_mask_logits[i].cpu().numpy()
                         logger.info(f"🔍 Frame {ann_frame_idx} raw logits stats: min={np.min(raw_logits):.4f}, max={np.max(raw_logits):.4f}, mean={np.mean(raw_logits):.4f}")
-                        thresholded = (out_mask_logits[i] > 0.0).cpu().numpy()
-                        logger.info(f"🔍 Frame {ann_frame_idx} after >0.0 threshold: {np.sum(thresholded)} pixels")
+                        
+                        if is_ultrasound:
+                            # Use adaptive thresholding for ultrasound
+                            thresholded_mask = adaptive_threshold_for_ultrasound(out_mask_logits[i], ann_frame_idx)
+                            logger.info(f"🔍 Frame {ann_frame_idx} ultrasound adaptive result: {np.sum(thresholded_mask)} pixels")
+                        else:
+                            # Use standard thresholding for non-ultrasound
+                            thresholded_mask = (out_mask_logits[i] > 0.0).cpu().numpy()
+                            logger.info(f"🔍 Frame {ann_frame_idx} standard result: {np.sum(thresholded_mask)} pixels")
                         
                     video_segments[ann_frame_idx] = {
-                        out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
+                        out_obj_id: adaptive_threshold_for_ultrasound(out_mask_logits[i], ann_frame_idx) if is_ultrasound else (out_mask_logits[i] > 0.0).cpu().numpy()
                         for i, out_obj_id in enumerate(out_obj_ids)
                     }
             if "one" not in data:
@@ -559,11 +787,15 @@ class BasicInferTask(InferTask):
                         for i, out_obj_id in enumerate(out_obj_ids):
                             raw_logits = out_mask_logits[i].cpu().numpy()
                             logger.info(f"🔍 Propagated frame {out_frame_idx} raw logits stats: min={np.min(raw_logits):.4f}, max={np.max(raw_logits):.4f}, mean={np.mean(raw_logits):.4f}")
-                            thresholded = (out_mask_logits[i] > 0.0).cpu().numpy()
-                            logger.info(f"🔍 Propagated frame {out_frame_idx} after >0.0 threshold: {np.sum(thresholded)} pixels")
+                            if is_ultrasound:
+                                thresholded = adaptive_threshold_for_ultrasound(out_mask_logits[i], out_frame_idx)
+                                logger.info(f"🔍 Propagated frame {out_frame_idx} ultrasound result: {np.sum(thresholded)} pixels")
+                            else:
+                                thresholded = (out_mask_logits[i] > 0.0).cpu().numpy()
+                                logger.info(f"🔍 Propagated frame {out_frame_idx} standard result: {np.sum(thresholded)} pixels")
                             
                     video_segments[out_frame_idx] = {
-                        out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
+                        out_obj_id: adaptive_threshold_for_ultrasound(out_mask_logits[i], out_frame_idx) if is_ultrasound else (out_mask_logits[i] > 0.0).cpu().numpy()
                         for i, out_obj_id in enumerate(out_obj_ids)
                     }
                 for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state, reverse=True):
@@ -572,15 +804,47 @@ class BasicInferTask(InferTask):
                         for i, out_obj_id in enumerate(out_obj_ids):
                             raw_logits = out_mask_logits[i].cpu().numpy()
                             logger.info(f"🔍 Reverse frame {out_frame_idx} raw logits stats: min={np.min(raw_logits):.4f}, max={np.max(raw_logits):.4f}, mean={np.mean(raw_logits):.4f}")
-                            thresholded = (out_mask_logits[i] > 0.0).cpu().numpy()
-                            logger.info(f"🔍 Reverse frame {out_frame_idx} after >0.0 threshold: {np.sum(thresholded)} pixels")
+                            if is_ultrasound:
+                                thresholded = adaptive_threshold_for_ultrasound(out_mask_logits[i], out_frame_idx)
+                                logger.info(f"🔍 Reverse frame {out_frame_idx} ultrasound result: {np.sum(thresholded)} pixels")
+                            else:
+                                thresholded = (out_mask_logits[i] > 0.0).cpu().numpy()
+                                logger.info(f"🔍 Reverse frame {out_frame_idx} standard result: {np.sum(thresholded)} pixels")
                             
                     video_segments[out_frame_idx] = {
-                        out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
+                        out_obj_id: adaptive_threshold_for_ultrasound(out_mask_logits[i], out_frame_idx) if is_ultrasound else (out_mask_logits[i] > 0.0).cpu().numpy()
                         for i, out_obj_id in enumerate(out_obj_ids)
                     }
 
             pred = np.zeros((len_z, len_y, len_x))
+
+            # Apply ultrasound-specific post-processing before building final prediction
+            if is_ultrasound:
+                logger.info("🔧 Applying ultrasound-specific post-processing...")
+                
+                # Get original click coordinates for region growing
+                original_click = data['pos_points'][0] if data['pos_points'] else None
+                
+                for frame_idx in video_segments.keys():
+                    for obj_id in video_segments[frame_idx].keys():
+                        mask = video_segments[frame_idx][obj_id]
+                        original_sum = np.sum(mask)
+                        
+                        # 1. Apply geometric constraints (ultrasound sector)
+                        mask = apply_ultrasound_geometric_constraints(mask, (len_y, len_x))
+                        geometric_sum = np.sum(mask)
+                        
+                        # 2. Apply region growing if we have click coordinates
+                        if original_click and original_click[2] == frame_idx:
+                            mask = ultrasound_region_growing(mask, original_click, (len_y, len_x))
+                            region_sum = np.sum(mask)
+                        else:
+                            region_sum = geometric_sum
+                        
+                        # Update the processed mask
+                        video_segments[frame_idx][obj_id] = mask
+                        
+                        logger.info(f"🔧 Frame {frame_idx} processing: {original_sum} -> {geometric_sum} -> {region_sum} pixels")
 
             for i in video_segments.keys():
                 # Debug: Check the actual values in the segmentation mask

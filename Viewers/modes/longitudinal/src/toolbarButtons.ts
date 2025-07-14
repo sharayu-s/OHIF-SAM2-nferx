@@ -264,6 +264,17 @@ const toolbarButtons: Button[] = [
     },
   },
   {
+    id: 'medsam',
+    uiType: 'ohif.radioGroup',
+    props: {
+      type: 'tool',
+      icon: 'sam-icon',
+      label: 'MedSAM',
+      tooltip: 'Medical SAM segmentation',
+      commands: 'medsam',
+    },
+  },
+  {
     id: 'saveAndNextObj',
     uiType: 'ohif.radioGroup',
     props: {

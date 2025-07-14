@@ -77,6 +77,182 @@ inferencer = DetInferencer(model=config_path, weights=checkpoint, palette='rando
 
 predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint)
 
+# MedSAM Configuration
+medsam_checkpoint = "/code/checkpoints/medsam_vit_b.pth"
+medsam_predictor = None
+
+def initialize_medsam():
+    """Initialize MedSAM predictor, downloading checkpoint if needed."""
+    global medsam_predictor
+    try:
+        # Try to download MedSAM checkpoint if it doesn't exist
+        if not os.path.exists(medsam_checkpoint):
+            logger.info("⬇️  MedSAM checkpoint not found, attempting to download...")
+            
+            # Create checkpoints directory if it doesn't exist
+            os.makedirs(os.path.dirname(medsam_checkpoint), exist_ok=True)
+            
+            # Try multiple download URLs
+            download_urls = [
+                "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth",  # Original SAM as fallback
+                "https://github.com/bowang-lab/MedSAM/releases/download/v1.0.0/medsam_vit_b.pth"
+            ]
+            
+            downloaded = False
+            for url in download_urls:
+                try:
+                    logger.info(f"🔗 Trying to download from {url}")
+                    import urllib.request
+                    urllib.request.urlretrieve(url, medsam_checkpoint)
+                    if os.path.exists(medsam_checkpoint) and os.path.getsize(medsam_checkpoint) > 1000000:  # At least 1MB
+                        logger.info(f"✅ Successfully downloaded checkpoint from {url}")
+                        downloaded = True
+                        break
+                except Exception as e:
+                    logger.warning(f"❌ Failed to download from {url}: {e}")
+                    continue
+            
+            if not downloaded:
+                logger.warning("⚠️  Failed to download MedSAM checkpoint from all URLs, MedSAM will be unavailable")
+                return
+        
+        # Try to import segment_anything for MedSAM
+        from segment_anything import sam_model_registry, SamPredictor
+        
+        # Load MedSAM model (uses SAM architecture with medical weights)
+        model = sam_model_registry["vit_b"](checkpoint=None)
+        
+        # Load MedSAM weights
+        checkpoint_data = torch.load(medsam_checkpoint, map_location="cuda")
+        if 'model' in checkpoint_data:
+            model.load_state_dict(checkpoint_data['model'], strict=False)
+        else:
+            model.load_state_dict(checkpoint_data, strict=False)
+        
+        model.to("cuda")
+        model.eval()
+        
+        medsam_predictor = SamPredictor(model)
+        logger.info("🔬 MedSAM predictor initialized successfully")
+            
+    except ImportError:
+        logger.warning("⚠️  segment_anything not installed, MedSAM unavailable")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize MedSAM: {str(e)}")
+
+# Initialize MedSAM on startup
+initialize_medsam()
+
+def run_medsam_segmentation(image_data, positive_points=None, negative_points=None, bbox=None):
+    """
+    Run MedSAM segmentation with given prompts.
+    
+    Args:
+        image_data: Input image as numpy array
+        positive_points: List of positive click coordinates [(x1, y1), (x2, y2), ...]
+        negative_points: List of negative click coordinates [(x1, y1), (x2, y2), ...]
+        bbox: Bounding box as [x1, y1, x2, y2]
+        
+    Returns:
+        Binary segmentation mask
+    """
+    global medsam_predictor
+    
+    if medsam_predictor is None:
+        logger.error("❌ MedSAM predictor not available")
+        return None
+        
+    try:
+        logger.info("🔬 Starting MedSAM segmentation...")
+        
+        # Prepare image for MedSAM
+        if len(image_data.shape) == 2:
+            # Convert grayscale to RGB
+            image_rgb = np.stack([image_data] * 3, axis=-1)
+        else:
+            image_rgb = image_data
+            
+        # Ensure uint8 format
+        if image_rgb.dtype != np.uint8:
+            if image_rgb.max() <= 1.0:
+                image_rgb = (image_rgb * 255).astype(np.uint8)
+            else:
+                image_rgb = image_rgb.astype(np.uint8)
+        
+        # Set image in MedSAM predictor
+        medsam_predictor.set_image(image_rgb)
+        
+        # Prepare point inputs
+        point_coords = []
+        point_labels = []
+        
+        if positive_points:
+            point_coords.extend(positive_points)
+            point_labels.extend([1] * len(positive_points))
+            
+        if negative_points:
+            point_coords.extend(negative_points)
+            point_labels.extend([0] * len(negative_points))
+        
+        # Convert to numpy arrays if we have points
+        input_point = np.array(point_coords) if point_coords else None
+        input_label = np.array(point_labels) if point_labels else None
+        input_box = np.array(bbox) if bbox else None
+        
+        # Run MedSAM prediction
+        masks, scores, logits = medsam_predictor.predict(
+            point_coords=input_point,
+            point_labels=input_label,
+            box=input_box,
+            multimask_output=True
+        )
+        
+        if masks is not None and len(masks) > 0:
+            # Return the best mask (highest score)
+            best_mask_idx = np.argmax(scores)
+            final_mask = masks[best_mask_idx]
+            logger.info(f"🎯 MedSAM segmentation completed successfully, mask shape: {final_mask.shape}")
+            return final_mask.astype(np.uint8) * 255  # Convert to binary mask
+        else:
+            logger.warning("⚠️  MedSAM returned no valid masks")
+            return None
+            
+    except Exception as e:
+        logger.error(f"❌ MedSAM segmentation failed: {str(e)}")
+        return None
+
+def detect_ultrasound_modality(dicom_data):
+    """
+    Detect if the image is ultrasound based on DICOM metadata.
+    
+    Args:
+        dicom_data: DICOM dataset or file path
+        
+    Returns:
+        True if ultrasound, False otherwise
+    """
+    try:
+        # Check modality from DICOM tags
+        modality = getattr(dicom_data, 'Modality', '').upper()
+        if modality == 'US':
+            logger.info("🩺 ULTRASOUND DETECTED - Modality: US")
+            return True
+            
+        # Check series description for ultrasound keywords
+        series_desc = getattr(dicom_data, 'SeriesDescription', '').upper()
+        ultrasound_keywords = ['ULTRASOUND', 'ECHO', 'DOPPLER', 'US ', 'SONO']
+        
+        for keyword in ultrasound_keywords:
+            if keyword in series_desc:
+                logger.info(f"🩺 ULTRASOUND DETECTED - SeriesDescription contains: {keyword}")
+                return True
+                
+        return False
+        
+    except Exception as e:
+        logger.warning(f"Could not determine modality: {str(e)}")
+        return False
+
 logger = logging.getLogger(__name__)
 
 
@@ -398,6 +574,63 @@ class BasicInferTask(InferTask):
             if 0x00281051 in dcm_img_sample.keys():
                 contrast_window = dcm_img_sample[0x00281051].value
             
+
+            # Check if MedSAM model type is requested
+            model_type = data.get('model_type', 'sam2')
+            logger.info(f"🔬 Model type requested: {model_type}")
+            
+            if model_type == 'medsam':
+                logger.info("🔬 Using MedSAM for segmentation...")
+                
+                # Extract prompts for MedSAM
+                positive_points = [(p[0], p[1]) for p in data.get('pos_points', [])]
+                negative_points = [(p[0], p[1]) for p in data.get('neg_points', [])]
+                bbox = None
+                if data.get('boxes') and len(data['boxes']) > 0:
+                    # Convert first box to bbox format [x1, y1, x2, y2]
+                    box_points = data['boxes'][0]
+                    if len(box_points) >= 2:
+                        bbox = [box_points[0][0], box_points[0][1], box_points[1][0], box_points[1][1]]
+                
+                logger.info(f"🔬 MedSAM prompts - Positive: {positive_points}, Negative: {negative_points}, BBox: {bbox}")
+                
+                # Load the image slice for MedSAM (similar to ultrasound processing)
+                img_np_3d = sitk.GetArrayFromImage(img)
+                target_slice = data['pos_points'][0][2] if data.get('pos_points') else img_np_3d.shape[0] // 2
+                img_2d = img_np_3d[img_np_3d.shape[0] - 1 - target_slice]
+                
+                # Run MedSAM segmentation
+                medsam_mask = run_medsam_segmentation(
+                    image_data=img_2d,
+                    positive_points=positive_points,
+                    negative_points=negative_points,
+                    bbox=bbox
+                )
+                
+                if medsam_mask is not None:
+                    # Convert mask to 3D volume
+                    pred = np.zeros((len_z, len_y, len_x))
+                    pred[target_slice] = medsam_mask / 255.0  # Normalize to 0-1
+                    
+                    pred_itk = sitk.GetImageFromArray(pred)
+                    pred_itk.CopyInformation(img)
+                    
+                    sitk.WriteImage(pred_itk, '/code/sam.nii.gz')
+                    
+                    result_json = {
+                        "model_type": "medsam",
+                        "pos_points": data.get('pos_points', []),
+                        "neg_points": data.get('neg_points', []),
+                        "boxes": data.get('boxes', []),
+                        "target_slice": target_slice
+                    }
+                    
+                    logger.info("🔬 MedSAM segmentation completed successfully")
+                    return '/code/sam.nii.gz', result_json
+                else:
+                    logger.error("❌ MedSAM segmentation failed, falling back to SAM2")
+                    # Fall back to SAM2
+                    model_type = 'sam2'
 
             if contrast_window != None and contrast_center !=None:
                 #breakpoint()

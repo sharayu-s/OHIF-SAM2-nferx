@@ -42,6 +42,13 @@ ENV GD_URL="https://download.openmmlab.com/mmdetection/v3.0/mm_grounding_dino/gr
 
 RUN wget --directory-prefix ${WEIGHTS_DIR} ${GD_URL}
 
+# Set environment variables for MedSAM
+ENV MEDSAM_CHECKPOINT_PATH="/code/checkpoints/medsam_vit_b.pth"
+
+# Note: MedSAM checkpoint will be downloaded at runtime if needed
+# This avoids build failures due to download issues
+RUN echo "MedSAM checkpoint will be downloaded at runtime if needed"
+
 RUN rm -rf /usr/local/lib/python3.10/dist-packages/dicomweb_client/web.py
 
 COPY ./monai-label/backup/web.py /usr/local/lib/python3.10/dist-packages/dicomweb_client/
