@@ -32,6 +32,7 @@ RUN mim install "mmcv>=2.0.0rc4,<2.2.0"
 RUN mim install mmdet
 
 COPY ./monai-label/. ./
+COPY ./basic_infer.py ./monailabel/tasks/infer/basic_infer.py
 
 ENV WEIGHTS_DIR="/code/checkpoints/"
 ENV WEIGHTS_URL="https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_large.pt"
@@ -45,9 +46,16 @@ RUN wget --directory-prefix ${WEIGHTS_DIR} ${GD_URL}
 # Set environment variables for MedSAM
 ENV MEDSAM_CHECKPOINT_PATH="/code/checkpoints/medsam_vit_b.pth"
 
+# Set environment variables for MedSAM2
+ENV MEDSAM2_CHECKPOINT_PATH="/code/checkpoints/medsam2_vit_b.pth"
+
 # Note: MedSAM checkpoint will be downloaded at runtime if needed
 # This avoids build failures due to download issues
 RUN echo "MedSAM checkpoint will be downloaded at runtime if needed"
+
+# Note: MedSAM2 checkpoint will be downloaded at runtime if needed
+# Check bowang-lab/MedSAM repository for official MedSAM2 releases
+RUN echo "MedSAM2 checkpoint will be downloaded at runtime if needed"
 
 RUN rm -rf /usr/local/lib/python3.10/dist-packages/dicomweb_client/web.py
 

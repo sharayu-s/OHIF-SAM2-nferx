@@ -894,6 +894,136 @@ const commandsModule = ({
         .finally(function () { });
     },
     
+    async medsam2() {
+      const response = await MonaiLabelClient.api_get('/monai/info/');
+      if (response.status === 200) {
+        uiNotificationService.show({
+          title: 'MONAI Label',
+          message: 'Connecting to MONAI Label (MedSAM2)',
+          type: 'info',
+          duration: 3000,
+        });
+      } else {
+        uiNotificationService.show({
+          title: 'MONAI Label',
+          message: 'Failed to connect to MONAI Label',
+          type: 'error',
+          duration: 3000,
+        });
+        return response;
+      }
+      
+      const { activeViewportId, viewports } = viewportGridService.getState();
+      const activeViewportSpecificData = viewports.get(activeViewportId);
+      const { displaySetInstanceUIDs } = activeViewportSpecificData;
+
+      const displaySets = displaySetService.activeDisplaySets;
+      const displaySetInstanceUID = displaySetInstanceUIDs[0];
+      const currentDisplaySets = displaySets.filter(e => {
+        return e.displaySetInstanceUID == displaySetInstanceUID;
+      })[0];
+
+      // Extract point prompts (positive and negative)
+      const pos_points = Array.from(measurementService.measurements)
+        .filter(e => {
+          return e[1].toolName === 'Probe';
+        })
+        .map(e => {
+          return Object.values(e[1].data)[0].index;
+        });
+      const neg_points = Array.from(measurementService.measurements)
+        .filter(e => {
+          return e[1].toolName === 'Probe2';
+        })
+        .map(e => {
+          return Object.values(e[1].data)[0].index;
+        });
+
+      // Extract bounding box prompts
+      const bd_boxes = Array.from(measurementService.measurements)
+        .filter(e => { return e[1].toolName === 'RectangleROI2' })
+        .map(e => { return Object.values(e[1].data)[0].pointsInShape })
+
+      let box_prompts = bd_boxes.map(e => { return [e.at(0).pointIJK, e.at(-1).pointIJK] })
+
+      let url = `/monai/infer/segmentation?image=${currentDisplaySets.SeriesInstanceUID}&output=dicom_seg`;
+      let params = {
+        largest_cc: false,
+        device: response.data.trainers.segmentation.config.device,
+        result_extension: '.nii.gz',
+        result_dtype: 'uint16',
+        result_compress: false,
+        studyInstanceUID: currentDisplaySets.StudyInstanceUID,
+        restore_label_idx: false,
+        pos_points: pos_points,
+        neg_points: neg_points,
+        boxes: box_prompts,
+        model_type: 'medsam2'  // Specify MedSAM2 model
+      };
+
+      if(useToggleHangingProtocolStore.getState().toggleHangingProtocol.nextObj!==undefined){
+        params.nextObj = useToggleHangingProtocolStore.getState().toggleHangingProtocol.nextObj
+      }
+
+      let data = MonaiLabelClient.constructFormData(params, null);
+
+      axios
+        .post(url, data, {
+          responseType: 'arraybuffer',
+          headers: {
+            accept: 'application/json, multipart/form-data',
+          },
+        })
+        .then(function (response) {
+          console.log('🔬 MedSAM2 command - Response received:', response);
+          console.debug(response);
+          
+          if (response.status === 200) {
+            uiNotificationService.show({
+              title: 'MONAI Label',
+              message: 'MedSAM2 Segmentation - Successful',
+              type: 'success',
+              duration: 2000,
+            });
+            
+            let currentDate = utils.formatDate(Date.now(), 'YYYYMMDD');
+            displaySetService.activeDisplaySets = displaySetService.activeDisplaySets.filter(e => {
+              return (e.SeriesDescription != 'MedSAM2_' + currentDisplaySets.SeriesDescription) || (e.SeriesDate != currentDate);
+            });
+
+            let studyInstanceUID = currentDisplaySets.StudyInstanceUID;
+            let studyInstanceUIDs = [studyInstanceUID, 1];
+            let dataSource = extensionManager.getActiveDataSource()[0];
+            let filters = { 'StudyInstanceUIDs': [studyInstanceUID] };
+            let appConfig = config;
+            
+            defaultRouteInit({ servicesManager, studyInstanceUIDs, dataSource, filters, appConfig }, "default").then(function (unsub) {
+              const displaySets = displaySetService.activeDisplaySets;
+              const currentDisplaySet = displaySets.filter(e => {
+                return (e.SeriesDescription == 'MedSAM2_' + currentDisplaySets.SeriesDescription) && (e.SeriesDate == currentDate);
+              })[0];
+              
+              if (currentDisplaySet) {
+                let updatedViewports = hangingProtocolService.getViewportsRequireUpdate(activeViewportId, currentDisplaySet.displaySetInstanceUID, true);
+                viewportGridService.setDisplaySetsForViewports(updatedViewports);
+              }
+            });
+          }
+          return response;
+        })
+        .catch(function (error) {
+          console.error('🔬 MedSAM2 command - Error:', error);
+          uiNotificationService.show({
+            title: 'MONAI Label',
+            message: 'MedSAM2 Segmentation - Failed',
+            type: 'error',
+            duration: 3000,
+          });
+          return error;
+        })
+        .finally(function () { });
+    },
+    
     saveAndNextObj: () => {
       servicesManager.services.measurementService.clearMeasurements()
       servicesManager.services.cornerstoneViewportService.resize()
@@ -1075,6 +1205,9 @@ const commandsModule = ({
     },
     medsam: {
       commandFn: actions.medsam,
+    },
+    medsam2: {
+      commandFn: actions.medsam2,
     },
     saveAndNextObj: {
       commandFn: actions.saveAndNextObj,

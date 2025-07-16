@@ -60,6 +60,9 @@ nltk.download('averaged_perceptron_tagger', download_dir='/root/nltk_data')
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
+# Define logger early to avoid NameError
+logger = logging.getLogger(__name__)
+
 config = BertConfig.from_pretrained("bert-base-uncased")
 model = BertModel.from_pretrained("bert-base-uncased", add_pooling_layer=False, config=config)
 tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
@@ -81,13 +84,17 @@ predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint)
 medsam_checkpoint = "/code/checkpoints/medsam_vit_b.pth"
 medsam_predictor = None
 
+# MedSAM2 Configuration
+medsam2_checkpoint = "/code/checkpoints/sam2_hiera_large.pt"
+medsam2_predictor = None
+
 def initialize_medsam():
     """Initialize MedSAM predictor, downloading checkpoint if needed."""
     global medsam_predictor
     try:
         # Try to download MedSAM checkpoint if it doesn't exist
         if not os.path.exists(medsam_checkpoint):
-            logger.info("⬇️  MedSAM checkpoint not found, attempting to download...")
+            print("⬇️  MedSAM checkpoint not found, attempting to download...")
             
             # Create checkpoints directory if it doesn't exist
             os.makedirs(os.path.dirname(medsam_checkpoint), exist_ok=True)
@@ -101,19 +108,19 @@ def initialize_medsam():
             downloaded = False
             for url in download_urls:
                 try:
-                    logger.info(f"🔗 Trying to download from {url}")
+                    print(f"🔗 Trying to download from {url}")
                     import urllib.request
                     urllib.request.urlretrieve(url, medsam_checkpoint)
                     if os.path.exists(medsam_checkpoint) and os.path.getsize(medsam_checkpoint) > 1000000:  # At least 1MB
-                        logger.info(f"✅ Successfully downloaded checkpoint from {url}")
+                        print(f"✅ Successfully downloaded checkpoint from {url}")
                         downloaded = True
                         break
                 except Exception as e:
-                    logger.warning(f"❌ Failed to download from {url}: {e}")
+                    print(f"❌ Failed to download from {url}: {e}")
                     continue
             
             if not downloaded:
-                logger.warning("⚠️  Failed to download MedSAM checkpoint from all URLs, MedSAM will be unavailable")
+                print("⚠️  Failed to download MedSAM checkpoint from all URLs, MedSAM will be unavailable")
                 return
         
         # Try to import segment_anything for MedSAM
@@ -132,16 +139,50 @@ def initialize_medsam():
         model.to("cuda")
         model.eval()
         
+        # Initialize MedSAM predictor with higher mask threshold for more precise segmentation
         medsam_predictor = SamPredictor(model)
-        logger.info("🔬 MedSAM predictor initialized successfully")
+        medsam_predictor.mask_threshold = 0.5  # Higher threshold for more precise masks
+        print("🔬 MedSAM predictor initialized successfully with mask_threshold=0.5")
             
     except ImportError:
-        logger.warning("⚠️  segment_anything not installed, MedSAM unavailable")
+        print("⚠️  segment_anything not installed, MedSAM unavailable")
     except Exception as e:
-        logger.error(f"❌ Failed to initialize MedSAM: {str(e)}")
+        print(f"❌ Failed to initialize MedSAM: {str(e)}")
 
-# Initialize MedSAM on startup
+def initialize_medsam2():
+    """Initialize MedSAM2 predictor with SAM2 architecture."""
+    global medsam2_predictor
+    try:
+        # Check if the SAM2 checkpoint exists (we're using the same checkpoint for MedSAM2)
+        if not os.path.exists(medsam2_checkpoint):
+            print(f"⚠️  MedSAM2 checkpoint not found at {medsam2_checkpoint}, MedSAM2 will be unavailable")
+            return
+        
+        # Try to import SAM2 for MedSAM2
+        from sam2.build_sam import build_sam2
+        from sam2.sam2_image_predictor import SAM2ImagePredictor
+        
+        # Build MedSAM2 model using SAM2 architecture
+        model = build_sam2(
+            config_file="sam2_hiera_l.yaml",  # Use correct config matching the checkpoint
+            ckpt_path=medsam2_checkpoint,
+            device="cuda"
+        )
+        
+        # Initialize MedSAM2 predictor
+        medsam2_predictor = SAM2ImagePredictor(model)
+        print("🔬 MedSAM2 predictor initialized successfully")
+            
+    except ImportError as e:
+        print(f"⚠️  SAM2 not installed, MedSAM2 unavailable: {str(e)}")
+    except Exception as e:
+        print(f"❌ Failed to initialize MedSAM2: {str(e)}")
+        import traceback
+        print(f"❌ MedSAM2 initialization traceback: {traceback.format_exc()}")
+
+# Initialize both models on startup
 initialize_medsam()
+initialize_medsam2()
 
 def run_medsam_segmentation(image_data, positive_points=None, negative_points=None, bbox=None):
     """
@@ -159,11 +200,11 @@ def run_medsam_segmentation(image_data, positive_points=None, negative_points=No
     global medsam_predictor
     
     if medsam_predictor is None:
-        logger.error("❌ MedSAM predictor not available")
+        print("❌ MedSAM predictor not available")
         return None
         
     try:
-        logger.info("🔬 Starting MedSAM segmentation...")
+        print("🔬 Starting MedSAM segmentation...")
         
         # Prepare image for MedSAM
         if len(image_data.shape) == 2:
@@ -179,46 +220,168 @@ def run_medsam_segmentation(image_data, positive_points=None, negative_points=No
             else:
                 image_rgb = image_rgb.astype(np.uint8)
         
-        # Set image in MedSAM predictor
+        # Set image for MedSAM
         medsam_predictor.set_image(image_rgb)
         
-        # Prepare point inputs
-        point_coords = []
-        point_labels = []
+        # Prepare prompts
+        input_point = None
+        input_label = None
+        input_box = None
         
-        if positive_points:
-            point_coords.extend(positive_points)
-            point_labels.extend([1] * len(positive_points))
+        if positive_points or negative_points:
+            points = []
+            labels = []
             
-        if negative_points:
-            point_coords.extend(negative_points)
-            point_labels.extend([0] * len(negative_points))
+            if positive_points:
+                for point in positive_points:
+                    points.append([point[0], point[1]])
+                    labels.append(1)  # Positive
+                    
+            if negative_points:
+                for point in negative_points:
+                    points.append([point[0], point[1]])
+                    labels.append(0)  # Negative
+                    
+            if points:
+                input_point = np.array(points)
+                input_label = np.array(labels)
         
-        # Convert to numpy arrays if we have points
-        input_point = np.array(point_coords) if point_coords else None
-        input_label = np.array(point_labels) if point_labels else None
-        input_box = np.array(bbox) if bbox else None
+        if bbox:
+            input_box = np.array(bbox)
         
         # Run MedSAM prediction
         masks, scores, logits = medsam_predictor.predict(
             point_coords=input_point,
             point_labels=input_label,
             box=input_box,
-            multimask_output=True
+            multimask_output=False  # Change to False for more precise segmentation
         )
         
         if masks is not None and len(masks) > 0:
-            # Return the best mask (highest score)
-            best_mask_idx = np.argmax(scores)
-            final_mask = masks[best_mask_idx]
-            logger.info(f"🎯 MedSAM segmentation completed successfully, mask shape: {final_mask.shape}")
-            return final_mask.astype(np.uint8) * 255  # Convert to binary mask
+            # Since multimask_output=False, we should only get one mask
+            final_mask = masks[0]
+            
+            # Quality checks for the mask
+            mask_area = np.sum(final_mask)
+            image_area = final_mask.shape[0] * final_mask.shape[1]
+            mask_ratio = mask_area / image_area
+            
+            # Reject masks that are too large (likely over-segmentation)
+            if mask_ratio > 0.8:
+                print(f"⚠️  MedSAM mask covers {mask_ratio:.2%} of image, likely over-segmentation")
+                return None
+            
+            # Convert to uint8 format
+            final_mask = (final_mask * 255).astype(np.uint8)
+            
+            print(f"✅ MedSAM segmentation completed - mask area: {mask_area} pixels ({mask_ratio:.2%} of image)")
+            return final_mask
         else:
-            logger.warning("⚠️  MedSAM returned no valid masks")
+            print("⚠️  MedSAM prediction returned no masks")
             return None
             
     except Exception as e:
-        logger.error(f"❌ MedSAM segmentation failed: {str(e)}")
+        print(f"❌ MedSAM segmentation failed: {str(e)}")
+        return None
+
+def run_medsam2_segmentation(image_data, positive_points=None, negative_points=None, bbox=None):
+    """
+    Run MedSAM2 segmentation with given prompts using SAM2 architecture.
+    
+    Args:
+        image_data: Input image as numpy array
+        positive_points: List of positive click coordinates [(x1, y1), (x2, y2), ...]
+        negative_points: List of negative click coordinates [(x1, y1), (x2, y2), ...]
+        bbox: Bounding box as [x1, y1, x2, y2]
+        
+    Returns:
+        Binary segmentation mask
+    """
+    global medsam2_predictor
+    
+    if medsam2_predictor is None:
+        print("❌ MedSAM2 predictor not available")
+        return None
+        
+    try:
+        print("🔬 Starting MedSAM2 segmentation...")
+        
+        # Prepare image for MedSAM2
+        if len(image_data.shape) == 2:
+            # Convert grayscale to RGB
+            image_rgb = np.stack([image_data] * 3, axis=-1)
+        else:
+            image_rgb = image_data
+            
+        # Ensure uint8 format
+        if image_rgb.dtype != np.uint8:
+            if image_rgb.max() <= 1.0:
+                image_rgb = (image_rgb * 255).astype(np.uint8)
+            else:
+                image_rgb = image_rgb.astype(np.uint8)
+        
+        # Set image for MedSAM2
+        medsam2_predictor.set_image(image_rgb)
+        
+        # Prepare prompts
+        input_point = None
+        input_label = None
+        input_box = None
+        
+        if positive_points or negative_points:
+            points = []
+            labels = []
+            
+            if positive_points:
+                for point in positive_points:
+                    points.append([point[0], point[1]])
+                    labels.append(1)  # Positive
+                    
+            if negative_points:
+                for point in negative_points:
+                    points.append([point[0], point[1]])
+                    labels.append(0)  # Negative
+                    
+            if points:
+                input_point = np.array(points)
+                input_label = np.array(labels)
+        
+        if bbox:
+            input_box = np.array(bbox)
+        
+        # Run MedSAM2 prediction
+        masks, scores, logits = medsam2_predictor.predict(
+            point_coords=input_point,
+            point_labels=input_label,
+            box=input_box,
+            multimask_output=False  # Use single mask for more precise segmentation
+        )
+        
+        if masks is not None and len(masks) > 0:
+            # Since multimask_output=False, we should only get one mask
+            final_mask = masks[0]
+            
+            # Quality checks for the mask
+            mask_area = np.sum(final_mask)
+            image_area = final_mask.shape[0] * final_mask.shape[1]
+            mask_ratio = mask_area / image_area
+            
+            # Reject masks that are too large (likely over-segmentation)
+            if mask_ratio > 0.8:
+                print(f"⚠️  MedSAM2 mask covers {mask_ratio:.2%} of image, likely over-segmentation")
+                return None
+            
+            # Convert to uint8 format
+            final_mask = (final_mask * 255).astype(np.uint8)
+            
+            print(f"✅ MedSAM2 segmentation completed - mask area: {mask_area} pixels ({mask_ratio:.2%} of image)")
+            return final_mask
+        else:
+            print("⚠️  MedSAM2 prediction returned no masks")
+            return None
+            
+    except Exception as e:
+        print(f"❌ MedSAM2 segmentation failed: {str(e)}")
         return None
 
 def detect_ultrasound_modality(dicom_data):
@@ -235,7 +398,7 @@ def detect_ultrasound_modality(dicom_data):
         # Check modality from DICOM tags
         modality = getattr(dicom_data, 'Modality', '').upper()
         if modality == 'US':
-            logger.info("🩺 ULTRASOUND DETECTED - Modality: US")
+            print("🩺 ULTRASOUND DETECTED - Modality: US")
             return True
             
         # Check series description for ultrasound keywords
@@ -244,16 +407,14 @@ def detect_ultrasound_modality(dicom_data):
         
         for keyword in ultrasound_keywords:
             if keyword in series_desc:
-                logger.info(f"🩺 ULTRASOUND DETECTED - SeriesDescription contains: {keyword}")
+                print(f"🩺 ULTRASOUND DETECTED - SeriesDescription contains: {keyword}")
                 return True
                 
         return False
         
     except Exception as e:
-        logger.warning(f"Could not determine modality: {str(e)}")
+        print(f"Could not determine modality: {str(e)}")
         return False
-
-logger = logging.getLogger(__name__)
 
 
 class CallBackTypes(str, Enum):
@@ -555,7 +716,7 @@ class BasicInferTask(InferTask):
                     break
             
             if image_files:
-            dcm_img_sample = dcmread(image_files[0], stop_before_pixels=True)
+                dcm_img_sample = dcmread(image_files[0], stop_before_pixels=True)
             else:
                 # Fallback: create a minimal DICOM-like object with default values
                 logger.warning(f"No DICOM files found in {dicom_dir}, using default contrast values")
@@ -629,6 +790,59 @@ class BasicInferTask(InferTask):
                     return '/code/sam.nii.gz', result_json
                 else:
                     logger.error("❌ MedSAM segmentation failed, falling back to SAM2")
+                    # Fall back to SAM2
+                    model_type = 'sam2'
+            
+            elif model_type == 'medsam2':
+                logger.info("🔬 Using MedSAM2 for segmentation...")
+                
+                # Extract prompts for MedSAM2
+                positive_points = [(p[0], p[1]) for p in data.get('pos_points', [])]
+                negative_points = [(p[0], p[1]) for p in data.get('neg_points', [])]
+                bbox = None
+                if data.get('boxes') and len(data['boxes']) > 0:
+                    # Convert first box to bbox format [x1, y1, x2, y2]
+                    box_points = data['boxes'][0]
+                    if len(box_points) >= 2:
+                        bbox = [box_points[0][0], box_points[0][1], box_points[1][0], box_points[1][1]]
+                
+                logger.info(f"🔬 MedSAM2 prompts - Positive: {positive_points}, Negative: {negative_points}, BBox: {bbox}")
+                
+                # Load the image slice for MedSAM2
+                img_np_3d = sitk.GetArrayFromImage(img)
+                target_slice = data['pos_points'][0][2] if data.get('pos_points') else img_np_3d.shape[0] // 2
+                img_2d = img_np_3d[img_np_3d.shape[0] - 1 - target_slice]
+                
+                # Run MedSAM2 segmentation
+                medsam2_mask = run_medsam2_segmentation(
+                    image_data=img_2d,
+                    positive_points=positive_points,
+                    negative_points=negative_points,
+                    bbox=bbox
+                )
+                
+                if medsam2_mask is not None:
+                    # Convert mask to 3D volume
+                    pred = np.zeros((len_z, len_y, len_x))
+                    pred[target_slice] = medsam2_mask / 255.0  # Normalize to 0-1
+                    
+                    pred_itk = sitk.GetImageFromArray(pred)
+                    pred_itk.CopyInformation(img)
+                    
+                    sitk.WriteImage(pred_itk, '/code/sam.nii.gz')
+                    
+                    result_json = {
+                        "model_type": "medsam2",
+                        "pos_points": data.get('pos_points', []),
+                        "neg_points": data.get('neg_points', []),
+                        "boxes": data.get('boxes', []),
+                        "target_slice": target_slice
+                    }
+                    
+                    logger.info("🔬 MedSAM2 segmentation completed successfully")
+                    return '/code/sam.nii.gz', result_json
+                else:
+                    logger.error("❌ MedSAM2 segmentation failed, falling back to SAM2")
                     # Fall back to SAM2
                     model_type = 'sam2'
 
@@ -725,8 +939,8 @@ class BasicInferTask(InferTask):
                     dicom_filenames = sorted(image_files)
                 
                 if len(dicom_filenames) >= 2:
-                dcm_img_sample = dcmread(dicom_filenames[0], stop_before_pixels=True)
-                dcm_img_sample_2 = dcmread(dicom_filenames[1], stop_before_pixels=True)
+                    dcm_img_sample = dcmread(dicom_filenames[0], stop_before_pixels=True)
+                    dcm_img_sample_2 = dcmread(dicom_filenames[1], stop_before_pixels=True)
                 elif len(dicom_filenames) == 1:
                     dcm_img_sample = dcmread(dicom_filenames[0], stop_before_pixels=True)
                     dcm_img_sample_2 = dcm_img_sample  # Use the same file as fallback
