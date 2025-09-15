@@ -53,10 +53,10 @@ from transformers import BertConfig, BertModel
 from transformers import AutoTokenizer
 
 import nltk
-nltk.download('punkt', download_dir='/root/nltk_data')
-nltk.download('punkt_tab', download_dir='/root/nltk_data')
-nltk.download('averaged_perceptron_tagger_eng', download_dir='/root/nltk_data')
-nltk.download('averaged_perceptron_tagger', download_dir='/root/nltk_data')
+#nltk.download('punkt', download_dir='/root/nltk_data')
+#nltk.download('punkt_tab', download_dir='/root/nltk_data')
+#nltk.download('averaged_perceptron_tagger_eng', download_dir='/root/nltk_data')
+#nltk.download('averaged_perceptron_tagger', download_dir='/root/nltk_data')
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 

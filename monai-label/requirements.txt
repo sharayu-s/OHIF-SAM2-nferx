@@ -43,7 +43,7 @@ requests==2.31.0
 requests-toolbelt==1.0.0
 urllib3==2.2.1
 scikit-learn
-scipy
+scipy==1.11.4
 google-auth==2.29.0
 transformers == 4.48.1
 openmim

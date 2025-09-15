@@ -60,7 +60,8 @@ RUN echo "MedSAM2 checkpoint will be downloaded at runtime if needed"
 RUN rm -rf /usr/local/lib/python3.10/dist-packages/dicomweb_client/web.py
 
 COPY ./monai-label/backup/web.py /usr/local/lib/python3.10/dist-packages/dicomweb_client/
-
+RUN python -m nltk.downloader punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng
+ENV NLTK_DATA="/root/nltk_data"
 ENV CUDA_VISIBLE_DEVICES=1
 ENV PATH=$PATH":/code/monailabel/scripts"
 
